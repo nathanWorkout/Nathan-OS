@@ -1,0 +1,2 @@
+nasm -f bin boot/bootloader.asm -o build/bootloader.bin
+qemu-system-i386 -drive format=raw,file=build/bootloader.bin,index=0,media=disk

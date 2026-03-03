@@ -1,0 +1,349 @@
+OS From Scratch (Nathan OS):
+
+  Environnement & Toolchain:
+    ✔ Installer la toolchain cross-compilation (i686-elf-gcc) @started(26-03-01 13:27) @done(26-03-02 20:05) @lasted(1d6h38m7s)
+    Ca a mis autant de temp car j'ai du partitionner windows pour liberer de la place a linux(GParked), et optimiser le télechargement avec -j2 pour éviter de faire crash le pc
+      ✔ Vérifier avec : i686-elf-gcc --version @started(26-03-02 20:06) @done(26-03-02 20:06) @lasted(38s)
+    ✔ Installer NASM (assembleur) @started(26-03-02 20:07) @done(26-03-02 20:08) @lasted(1m8s)
+      ✔ Vérifier avec : nasm --version @started(26-03-02 20:08) @done(26-03-02 20:08) @lasted(11s)
+    C'était déjà installler avant
+    ✔ Installer QEMU (émulateur pour tester) @done(26-03-02 20:11)
+      ✔ Vérifier avec : qemu-system-i386 --version @started(26-03-02 20:11) @done(26-03-02 20:11) @lasted(45s)
+    ✔ Installer GRUB + xorriso (pour créer l'image bootable) @started(26-03-02 20:12) @done(26-03-02 20:12) @lasted(43s)
+      ✔ Vérifier avec : grub-mkrescue --version && xorriso --version @started(26-03-02 20:12) @done(26-03-02 20:12) @lasted(47s)
+    ✔ Créer la structure de dossiers du projet: @started(26-03-02 20:12) @done(26-03-02 20:13) @lasted(1m54s)
+      ✔ boot/        — fichiers assembleur du bootloader @started(26-03-02 20:13) @done(26-03-02 20:14) @lasted(1m5s)
+      ✔ kernel/      — fichiers C du kernel @started(26-03-02 20:13) @done(26-03-02 20:14) @lasted(1m6s)
+      ✔ drivers/     — drivers (VGA, clavier, série) @started(26-03-02 20:13) @done(26-03-02 20:14) @lasted(1m7s)
+      ✔ lib/         — mini libc @started(26-03-02 20:13) @done(26-03-02 20:14) @lasted(1m7s)
+      ✔ lang/        — sources de NPL @started(26-03-02 20:13) @done(26-03-02 20:14) @lasted(1m8s)
+      ✔ iso/         — image ISO générée @started(26-03-02 20:14) @done(26-03-02 20:14) @lasted(8s)
+      ✔ build/       — fichiers compilés (.o) @started(26-03-02 20:14) @done(26-03-02 20:14) @lasted(9s)
+    ✔ Écrire le Makefile principal @started(26-03-02 20:14) @done(26-03-02 20:57) @lasted(43m50s)
+    j'ai rename le projet donc le temp n'est pas significatif mais j'ai mis environ une bonne demie heure 
+      ✔ Vérifier avec : make — aucune erreur, les .o sont générés dans build/ @started(26-03-02 20:57) @done(26-03-02 20:58) @lasted(1m21s)
+    ✔ Écrire le linker script (linker.ld) @started(26-03-02 20:58) @done(26-03-02 20:58) @lasted(26s)
+    pareil c'est pas significatif mais j'ai mis 15-20min
+      ✔ Vérifier que le kernel est bien linkié à l'adresse 0x100000 @started(26-03-02 20:59) @done(26-03-02 20:59) @lasted(5s)
+    ✔ Tester le build avec un kernel vide (kmain vide) @started(26-03-02 21:05) @done(26-03-02 21:05) @lasted(28s)
+      ✔ Objectif : make génère un fichier kernel.bin sans erreur @started(26-03-02 20:59) @done(26-03-02 21:05) @lasted(6m30s)
+      Franchement galère hein mais c'est rien comparé a ce qui m'attend ! (pareil c pas significatif j'ai pris 20min)
+
+  Bootloader:
+  ☐ Hello world en assembeleur(gestion des segments, mode réel, offsets) @started(26-03-03 18:45)
+    Sachant que j'ai commencer en cours pendant un trou d'une heure donc on rajoute une heure
+    1er problème : le message ne s'affichait pas à l'écran car org 0x7C00 et ds = 0x07C0
+    étaient en conflit — NASM calculait l'offset de message depuis 0x7C00, donc le CPU
+    cherchait le message à la mauvaise adresse en mémoire.
+
+    Solution : changer org 0x7C00 en org 0x0000 pour que les offsets partent de 0,
+    ce qui colle avec ds = 0x07C0 (0x07C0 * 16 + offset = 0x7C00 + offset )
+
+    HELLO WORLD FONCTIONELLLLLLL JSUIS TROPP CONTENT
+  ☐ Écrire l'entête Multiboot (magic number, flags, checksum)
+    ☐ Vérifier avec : grub-file --is-x86-multiboot kernel.bin && echo "OK"
+  ☐ Écrire le point d'entrée en assembleur (boot.asm)
+    ☐ Vérifier que nasm compile boot.asm sans erreur
+  ☐ Initialiser la pile (stack)
+    ☐ Réserver 16Ko pour la stack dans boot.asm
+    ☐ Vérifier que esp pointe bien sur le haut de la stack
+  ☐ Passer en mode protégé 32-bit
+    ☐ Désactiver les interruptions (cli) avant le passage
+    ☐ Activer le bit PE dans cr0
+  ☐ Initialiser la GDT (Global Descriptor Table)
+    ☐ Écrire un segment code (0x00 - 0xFFFFFFFF, ring 0)
+    ☐ Écrire un segment data (0x00 - 0xFFFFFFFF, ring 0)
+    ☐ Charger la GDT avec lgdt
+  ☐ Sauter vers le kernel C (kmain)
+    ☐ Faire un far jump pour recharger cs avec le bon sélecteur
+    ☐ Initialiser ds, es, fs, gs, ss avec le sélecteur data
+  ☐ Créer l'image ISO bootable avec GRUB
+    ☐ Écrire le grub.cfg (menuentry qui charge kernel.bin)
+    ☐ Générer l'ISO avec grub-mkrescue
+  ☐ Tester le boot dans QEMU
+    ☐ Objectif : QEMU démarre, le menu GRUB apparaît, le kernel se lance sans reboot immédiat
+
+  Kernel de base:
+  ☐ Écrire le point d'entrée kernel en C (kmain)
+    ☐ Juste une fonction kmain() vide qui boucle à l'infini (while(1))
+    ☐ Objectif : QEMU démarre sans triple fault (pas de reboot en boucle)
+  ☐ Implémenter le driver VGA (affichage texte 80x25)
+    ☐ Écrire dans la mémoire vidéo (0xB8000)
+    ☐ Gérer les couleurs (attribut octet)
+    ☐ Gérer le curseur (position x/y)
+    ☐ Gérer le scroll quand on atteint la dernière ligne
+    ☐ Objectif : afficher un caractère 'A' à l'écran en haut à gauche
+  ☐ Implémenter putchar / puts / printk
+    ☐ putchar — affiche un caractère à la position courante
+    ☐ puts — affiche une chaîne
+    ☐ printk — affiche une chaîne formatée (%d, %s, %x minimum)
+    ☐ Gérer \n (retour à la ligne) et \t (tabulation)
+    ☐ Objectif : afficher "Hello World from Nathan OS!" à l'écran
+  ☐ Écrire un panic kernel (affichage erreur fatale + halt)
+    ☐ Afficher le message d'erreur en rouge
+    ☐ Afficher le fichier et la ligne où le panic a été appelé
+    ☐ Halt le CPU (cli + hlt en boucle)
+    ☐ Objectif : appeler panic("test") et voir le message rouge à l'écran
+  ☐ Initialiser l'IDT (Interrupt Descriptor Table)
+    ☐ Écrire la structure IDT (256 entrées)
+    ☐ Écrire les stubs assembleur pour chaque interruption
+    ☐ Charger l'IDT avec lidt
+    ☐ Objectif : lidt s'exécute sans crash
+  ☐ Écrire les handlers d'exceptions CPU
+    ☐ Exception 0 — division par zéro
+    ☐ Exception 13 — general protection fault
+    ☐ Exception 14 — page fault
+    ☐ Afficher le numéro et le nom de l'exception via panic
+    ☐ Objectif : provoquer une division par zéro dans kmain, voir le message d'erreur
+  ☐ Initialiser le PIC 8259 (remapper les IRQ vers 32-47)
+    ☐ Envoyer les commandes d'initialisation au PIC master et slave
+    ☐ Remapper IRQ0-7 vers vecteurs 32-39
+    ☐ Remapper IRQ8-15 vers vecteurs 40-47
+    ☐ Masquer toutes les IRQ pour l'instant
+    ☐ Objectif : plus de conflits entre exceptions CPU et IRQ hardware
+  ☐ Activer les interruptions (sti)
+    ☐ Démasquer les IRQ nécessaires
+    ☐ Appeler sti
+    ☐ Objectif : le kernel tourne toujours sans crash après sti
+  ☐ Implémenter le timer (IRQ0 — PIT)
+    ☐ Configurer le PIT à 100Hz (10ms par tick)
+    ☐ Écrire le handler IRQ0
+    ☐ Incrémenter un compteur de ticks
+    ☐ Envoyer le EOI (End Of Interrupt) au PIC en fin de handler
+    ☐ Objectif : afficher le compteur de ticks qui s'incrémente à l'écran
+
+  Gestion mémoire:
+  ☐ Détecter la RAM disponible (via Multiboot info)
+    ☐ Lire la memory map passée par GRUB (multiboot_info_t)
+    ☐ Parcourir les entrées mmap pour trouver les zones utilisables
+    ☐ Calculer la RAM totale disponible
+    ☐ Objectif : afficher "RAM détectée : X Mo" au démarrage
+  ☐ Écrire le gestionnaire de mémoire physique (bitmap allocator)
+    ☐ Créer un bitmap (1 bit = 1 page de 4Ko)
+    ☐ Marquer les zones kernel et bootloader comme utilisées
+    ☐ Marquer les zones non-RAM comme utilisées
+    ☐ Implémenter alloc_frame() — trouve et réserve une page libre
+    ☐ Implémenter free_frame() — libère une page
+    ☐ Objectif : allouer 3 pages, afficher leurs adresses, les libérer sans crash
+  ☐ Implémenter la pagination (page directory, page tables)
+    ☐ Créer le page directory (1024 entrées)
+    ☐ Créer les page tables (1024 entrées chacune)
+    ☐ Identity mapper les 4 premiers Mo (adresse virtuelle = adresse physique)
+    ☐ Identity mapper la mémoire vidéo VGA (0xB8000)
+    ☐ Mapper le kernel à 0x100000
+  ☐ Activer la pagination (cr0, cr3)
+    ☐ Charger l'adresse du page directory dans cr3
+    ☐ Activer le bit PG dans cr0
+    ☐ Objectif : la pagination est activée, le kernel tourne toujours, l'écran VGA fonctionne encore
+  ☐ Écrire kmalloc / kfree (heap kernel)
+    ☐ Définir une zone heap dans l'espace virtuel (ex: 0x200000 - 0x800000)
+    ☐ Implémenter un allocateur par blocs avec header (taille, libre/occupé)
+    ☐ Implémenter kmalloc(size) — retourne un pointeur aligné
+    ☐ Implémenter kfree(ptr) — libère le bloc
+    ☐ Implémenter la fusion de blocs libres contigus (coalescence)
+    ☐ Objectif : allouer une string avec kmalloc, écrire dedans, afficher, libérer sans crash
+  ☐ Tester les allocations mémoire
+    ☐ Allouer et libérer 100 blocs de tailles variées
+    ☐ Vérifier qu'il n'y a pas de fuite mémoire (heap size stable)
+    ☐ Provoquer un accès à une page non mappée et vérifier que le page fault handler s'affiche
+    ☐ Objectif : le heap est stable, les erreurs mémoire sont catchées proprement
+
+  Drivers:
+  ☐ Implémenter le driver port série COM1 (logs de debug)
+    ☐ Initialiser le port COM1 (baud rate 38400)
+    ☐ Implémenter serial_putchar() — envoie un caractère sur COM1
+    ☐ Implémenter serial_printf() — envoie une string formatée sur COM1
+    ☐ Activer les logs série dans QEMU (option -serial stdio)
+    ☐ Objectif : voir les logs du kernel dans le terminal hôte QEMU en parallèle de l'écran VGA
+  ☐ Implémenter le driver clavier PS/2 (IRQ1)
+    ☐ Écrire le handler IRQ1
+    ☐ Lire le scancode depuis le port 0x60
+    ☐ Envoyer le EOI au PIC en fin de handler
+    ☐ Objectif : afficher le scancode brut à l'écran quand on appuie sur une touche
+  ☐ Gérer le scancode → ASCII (keymap AZERTY)
+    ☐ Écrire la table de conversion scancode → ASCII (keymap AZERTY)
+    ☐ Gérer les touches spéciales (Shift, Caps Lock, Ctrl)
+    ☐ Gérer les scancodes make (appui) et break (relâchement)
+    ☐ Objectif : afficher le bon caractère ASCII à l'écran quand on appuie sur une touche
+  ☐ Implémenter un buffer circulaire d'entrée clavier
+    ☐ Créer un buffer circulaire de 256 caractères
+    ☐ Le handler IRQ1 écrit dans le buffer
+    ☐ Implémenter keyboard_getchar() — lit depuis le buffer (bloquant)
+    ☐ Implémenter keyboard_available() — vérifie si un caractère est disponible
+    ☐ Objectif : taper "hello" et afficher chaque lettre à l'écran au fur et à mesure
+
+  Mini libc:
+  ☐ Implémenter string.h
+    ☐ strlen(const char *s)
+    ☐ strcpy(char *dst, const char *src)
+    ☐ strncpy(char *dst, const char *src, size_t n)
+    ☐ strcmp(const char *a, const char *b)
+    ☐ strncmp(const char *a, const char *b, size_t n)
+    ☐ strcat(char *dst, const char *src)
+    ☐ strchr(const char *s, int c)
+    ☐ strstr(const char *haystack, const char *needle)
+    ☐ Objectif : tester chaque fonction avec des cas simples, comparer avec le comportement libc standard
+  ☐ Implémenter memory (string.h)
+    ☐ memcpy(void *dst, const void *src, size_t n)
+    ☐ memset(void *dst, int c, size_t n)
+    ☐ memmove(void *dst, const void *src, size_t n)
+    ☐ memcmp(const void *a, const void *b, size_t n)
+    ☐ Objectif : copier un buffer, le comparer, le remettre à zéro sans corruption mémoire
+  ☐ Implémenter ctype.h
+    ☐ isdigit(int c)
+    ☐ isalpha(int c)
+    ☐ isalnum(int c)
+    ☐ isspace(int c)
+    ☐ isupper(int c)
+    ☐ islower(int c)
+    ☐ toupper(int c)
+    ☐ tolower(int c)
+    ☐ Objectif : le lexer de NPL compile et tokenize une expression simple sans erreur
+  ☐ Implémenter stdlib.h
+    ☐ malloc(size_t size) — wrapper de kmalloc
+    ☐ free(void *ptr) — wrapper de kfree
+    ☐ realloc(void *ptr, size_t size)
+    ☐ atoi(const char *s)
+    ☐ itoa(int n, char *buf, int base)
+    ☐ exit(int code) — halt le kernel proprement
+    ☐ abort() — panic kernel
+    ☐ Objectif : allouer une string avec malloc, écrire dedans, la réallouer, libérer sans crash
+  ☐ Implémenter stdio.h (minimal)
+    ☐ printf(const char *fmt, ...) — %d, %s, %x, %c, %u minimum
+    ☐ putchar(int c)
+    ☐ puts(const char *s)
+    ☐ sprintf(char *buf, const char *fmt, ...)
+    ☐ Pas de fopen / fread / fwrite (pas de filesystem)
+    ☐ Objectif : printf("valeur = %d, hex = %x\n", 42, 255) affiche "valeur = 42, hex = ff"
+  ☐ Supprimer / remplacer les appels fichiers de read_file.c
+    ☐ Remplacer fopen / fread par une lecture depuis un buffer mémoire
+    ☐ Objectif : read_file.c compile sans erreur sans libc standard
+  ☐ Tester la mini libc complète
+    ☐ Compiler les sources de NPL avec la mini libc uniquement (sans libc standard)
+    ☐ Objectif : tous les fichiers de NPL compilent sans erreur ni warning
+
+  Terminal / Shell:
+  ☐ Écrire la boucle principale du shell (REPL)
+    ☐ Boucle infinie : affiche prompt → lit ligne → exécute → recommence
+    ☐ Objectif : la boucle tourne sans crash, même si la commande est vide
+  ☐ Implémenter readline()
+    ☐ Lire caractère par caractère depuis keyboard_getchar()
+    ☐ Stocker dans un buffer jusqu'au \n
+    ☐ Gérer backspace (effacer le dernier caractère à l'écran et dans le buffer)
+    ☐ Gérer la limite de taille du buffer (ex: 256 chars max)
+    ☐ Objectif : taper "hello world" avec des backspaces, valider, récupérer la string correcte
+  ☐ Gérer les flèches directionnelles
+    ☐ Détecter les scancodes étendus (0xE0) du clavier
+    ☐ Flèche gauche / droite — déplacer le curseur dans la ligne
+    ☐ Insérer / supprimer un caractère au milieu de la ligne
+    ☐ Objectif : se déplacer dans une ligne tapée et modifier un caractère au milieu
+  ☐ Afficher un prompt personnalisé
+    ☐ Afficher "Nathan OS > " en couleur avant chaque saisie
+    ☐ Repositionner le curseur après le prompt
+    ☐ Objectif : le prompt réapparaît proprement après chaque commande
+  ☐ Gérer l'historique de commandes
+    ☐ Stocker les dernières commandes dans un tableau circulaire (ex: 50 entrées)
+    ☐ Flèche haut — commande précédente
+    ☐ Flèche bas — commande suivante
+    ☐ Objectif : naviguer dans l'historique et réexécuter une ancienne commande
+  ☐ Implémenter le parsing de commandes
+    ☐ Séparer la commande et ses arguments (split sur les espaces)
+    ☐ Identifier le nom de la commande (premier token)
+    ☐ Objectif : parser "echo hello world" → commande="echo", args=["hello", "world"]
+  ☐ Implémenter les commandes basiques
+    ☐ help — affiche la liste des commandes disponibles
+    ☐ clear — efface l'écran et repositionne le curseur en haut
+    ☐ echo [texte] — affiche le texte
+    ☐ mem — affiche la RAM totale et la mémoire heap utilisée
+    ☐ reboot — redémarre la machine (via le port 0x64)
+    ☐ Objectif : toutes les commandes s'exécutent sans crash
+  ☐ Implémenter le mode REPL pour NPL
+    ☐ La commande "npl" lance l'interpréteur en mode interactif
+    ☐ Afficher un prompt secondaire "npl > "
+    ☐ Chaque ligne est passée directement au lexer/parser/interpréteur
+    ☐ Le résultat s'affiche sur la ligne suivante
+    ☐ La commande "exit" ou Ctrl+C quitte le mode NPL et retourne au shell
+    ☐ Objectif : taper "npl", puis "1 + 1", voir "2" s'afficher
+
+  Intégration du langage (NPL):
+  ☐ Préparer les sources NPL pour le portage
+    ☐ Copier les sources dans le dossier lang/ du projet OS
+    ☐ Lister toutes les fonctions libc utilisées dans chaque fichier
+    ☐ Identifier les fonctionnalités qui dépendent du système hôte (fichiers, stdin, stdout)
+    ☐ Objectif : avoir une liste claire de tout ce qui doit être remplacé
+  ☐ Remplacer les includes libc
+    ☐ Remplacer #include <stdio.h> par #include "../lib/stdio.h"
+    ☐ Remplacer #include <stdlib.h> par #include "../lib/stdlib.h"
+    ☐ Remplacer #include <string.h> par #include "../lib/string.h"
+    ☐ Remplacer #include <ctype.h> par #include "../lib/ctype.h"
+    ☐ Objectif : tous les fichiers NPL compilent avec la mini libc sans toucher au code métier
+  ☐ Adapter les entrées / sorties
+    ☐ Remplacer printf() par le printk() du kernel (normalement transparent si mini libc bien faite)
+    ☐ Remplacer scanf() / fgets() par readline() du terminal
+    ☐ Adapter read_file.c pour lire depuis un buffer mémoire au lieu d'un fichier
+    ☐ Objectif : NPL peut lire une string en mémoire et afficher un résultat à l'écran
+  ☐ Exposer une API d'entrée pour le shell
+    ☐ Écrire npl_exec_line(const char *line) — exécute une ligne de code NPL
+    ☐ Écrire npl_exec_buffer(const char *buf, size_t len) — exécute un bloc de code
+    ☐ Écrire npl_init() — initialise l'état de l'interpréteur
+    ☐ Écrire npl_reset() — remet l'interpréteur à zéro
+    ☐ Objectif : appeler npl_exec_line("1 + 1") depuis kmain et voir "2" s'afficher
+  ☐ Brancher NPL dans le shell
+    ☐ La commande "npl" appelle npl_init() puis lance la boucle REPL NPL
+    ☐ Chaque ligne tapée est passée à npl_exec_line()
+    ☐ Les erreurs de syntaxe / runtime s'affichent proprement sans crasher le shell
+    ☐ "exit" appelle npl_reset() et retourne au prompt principal
+    ☐ Objectif : session NPL complète depuis le shell, retour propre au shell après exit
+  ☐ Tester les fonctionnalités de NPL
+    ☐ Tester les expressions arithmétiques (1 + 1, 10 * 3, etc.)
+    ☐ Tester les variables (x = 5, y = x + 1, etc.)
+    ☐ Tester les structures de contrôle (if, while, for)
+    ☐ Tester les fonctions (définition + appel)
+    ☐ Tester les strings
+    ☐ Objectif : un programme NPL non trivial s'exécute correctement dans l'OS
+  ☐ Gérer les erreurs robustement
+    ☐ Une erreur de syntaxe affiche un message clair et ne crashe pas le shell
+    ☐ Une erreur runtime (division par zéro, variable inexistante) affiche un message et continue
+    ☐ Une fuite mémoire dans l'interpréteur ne fait pas planter le heap kernel
+    ☐ Objectif : provoquer volontairement 10 erreurs différentes, le shell survit à toutes
+
+  Tests & Polish:
+  ☐ Tests kernel
+    ☐ Provoquer chaque exception CPU et vérifier le message d'erreur
+    ☐ Allouer toute la RAM disponible et vérifier que kmalloc retourne NULL proprement
+    ☐ Tester le scroll VGA (remplir les 25 lignes et vérifier le défilement)
+    ☐ Tester le timer (vérifier que le compteur de ticks s'incrémente correctement)
+    ☐ Objectif : le kernel survit à tous les cas limites sans triple fault
+  ☐ Tests mémoire
+    ☐ Allouer et libérer 1000 blocs de tailles aléatoires
+    ☐ Vérifier l'absence de fragmentation excessive du heap
+    ☐ Vérifier qu'il n'y a pas de fuite mémoire après une session NPL complète
+    ☐ Objectif : le heap est stable après 10 minutes d'utilisation intensive
+  ☐ Tests terminal
+    ☐ Taper 256 caractères d'affilée (limite du buffer readline)
+    ☐ Naviguer dans l'historique sur 50 commandes
+    ☐ Taper des caractères spéciaux (accents, symboles) et vérifier le comportement
+    ☐ Tester clear, help, echo, mem, reboot
+    ☐ Objectif : le terminal est stable et prévisible dans tous les cas
+  ☐ Tests NPL
+    ☐ Exécuter 100 lignes de code NPL d'affilée
+    ☐ Provoquer toutes les erreurs possibles (syntaxe, runtime, mémoire)
+    ☐ Vérifier que le shell survit à une session NPL crashée
+    ☐ Objectif : NPL est stable et les erreurs sont toujours catchées proprement
+  ☐ Polish visuel
+    ☐ Écrire un écran de démarrage (splash screen) avec le nom de l'OS
+    ☐ Afficher les infos au boot (RAM détectée, version OS, version NPL)
+    ☐ Coloriser le prompt et les messages d'erreur
+    ☐ Écrire un écran de panic stylisé (fond rouge, message blanc)
+    ☐ Objectif : l'OS a une identité visuelle cohérente
+  ☐ Tests sur vrai hardware
+    ☐ Créer une clé USB bootable avec l'image ISO (dd ou Rufus)
+    ☐ Tester sur un PC réel (attention aux différences clavier PS/2 vs USB)
+    ☐ Vérifier que le clavier fonctionne sur vrai hardware
+    ☐ Vérifier que la mémoire détectée est correcte
+    ☐ Objectif : l'OS boot et NPL s'exécute sur vrai hardware
+  ☐ Distribution
+    ☐ Créer une image ISO finale propre
+    ☐ Écrire un README du projet
+    ☐ Écrire la documentation de NPL (syntaxe, exemples)
+    ☐ Objectif : quelqu'un d'autre peut builder et tester l'OS depuis zéro
