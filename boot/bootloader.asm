@@ -33,12 +33,5 @@ sector2:
 
 
 
-
-done:
-    cli                 ; Désactive les interruptions
-    hlt                 ; Met le CPU en pause jusqu'à la prochaine interruption (qui n'arrivera jamais)
-
-
-messageChangeMode db "Le bootloader a lu le secteur 2 du disque dur !", 0
 times 510 - ($ - $$) db 0 
 dw 0xAA55            
