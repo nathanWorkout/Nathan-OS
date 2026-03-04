@@ -30,7 +30,7 @@ OS From Scratch (Nathan OS):
       Franchement galère hein mais c'est rien comparé a ce qui m'attend ! (pareil c pas significatif j'ai pris 20min)
 
   Bootloader:
-  ☐ Hello world en assembeleur(gestion des segments, mode réel, offsets) @started(26-03-03 18:45)
+  ✔ Hello world en assembeleur(gestion des segments, mode réel, offsets) @started(26-03-03 18:45) @done(26-03-03 19:43) @lasted(58m27s)
     Sachant que j'ai commencer en cours pendant un trou d'une heure donc on rajoute une heure
     1er problème : le message ne s'affichait pas à l'écran car org 0x7C00 et ds = 0x07C0
     étaient en conflit — NASM calculait l'offset de message depuis 0x7C00, donc le CPU
@@ -40,6 +40,8 @@ OS From Scratch (Nathan OS):
     ce qui colle avec ds = 0x07C0 (0x07C0 * 16 + offset = 0x7C00 + offset )
 
     HELLO WORLD FONCTIONELLLLLLL JSUIS TROPP CONTENT
+
+
   ☐ Écrire l'entête Multiboot (magic number, flags, checksum)
     ☐ Vérifier avec : grub-file --is-x86-multiboot kernel.bin && echo "OK"
   ☐ Écrire le point d'entrée en assembleur (boot.asm)
