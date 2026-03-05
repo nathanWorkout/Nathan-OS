@@ -16,22 +16,28 @@ bits 16
     ; On teste si A20 est bien activé via un test mémoire
     ; Sans A20 : 0x100000 et 0x000000 pointent au même endroit physique (bit 21 ignoré)
     ; Avec A20 : 0x100000 et 0x000000 sont deux adresses séparées
-    mov byte [0x000000], 0x55   ; Écrit 0x55 à l'adresse 0x000000
-    mov al, [0x100000]          ; Lit ce qui est à 0x100000
-    cmp al, 0x55                ; Si pareil → A20 inactif, sinon → A20 actif
+    ; En mode réel on ne peut pas adresser 0x100000 directement, on utilise fs:0x0010 avec fs=0xFFFF
+    ; (0xFFFF << 4) + 0x0010 = 0xFFFF0 + 0x10 = 0x100000
+
+    xor di, di                  ; di car c'est un segment et c'est le plus neutre des registres
+    mov byte [di], 0x55         ; Écrit 0x55 à l'adresse 0x0000 (ds=0 donc ds:di = 0x00000)
+    mov ax, 0xFFFF
+    mov fs, ax
+    mov al, [fs:0x0010]         ; Lit ce qui est à 0x100000 via fs:0x0010
+    cmp al, 0x55                ; Si l'adresse est pareil -> A20 inactif, sinon -> A20 actif
     jne A20_OK                  ; A20 actif, on continue
 
 
     mov ax, 0x2401      ; Fonction pour activer le port A20 via le BIOS 
     int 0x15            ; Interruption pour activer A20 via le BIOS (alternative au port 0x92)
-    jnc A20_OK            ; Si pas d'erreur, A20 est activé, sinon échec (c'est la différence avec jne la)
+    jnc A20_OK          ; Si pas d'erreur, A20 est activé, sinon échec (c'est la différence avec jne la)
 
 A20_FAIL:
     cli
     hlt
 
 A20_OK:
-    ; A20 est maintenant activé, on peut accéder à toute la mémoire au-delà de 1Mo
+; A20 est maintenant activé, on peut accéder à toute la mémoire au-delà de 1Mo
 
 hang:
     cli                 ; Désactive les interruptions - temporaire, sera remplacé par la suite du bootloader

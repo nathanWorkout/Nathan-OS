@@ -14,9 +14,11 @@ main:
     mov ds, ax          ; Data Segment à 0
     mov es, ax          ; Extra Segment à 0
 
+    mov [boot_drive], dl        ; Sauvegarde le numéro de disque fourni par le BIOS
+
     mov ax, 0x7000      ; Cette adresse car elle est libre en mémoire et ne risque pas d'écraser le bootloader
     mov ss, ax          ; Stack Segment à 0x7000
-    mov sp, 0xFFFF      ; Stack Pointer à la fin de la pile (0x7000 + 0xFFFF = 0x7FFF, juste avant le début)
+    mov sp, 0x0000      ; Stack Pointer à 0 → wrappe à 0xFFFF, pile de 64Ko propre et alignée sur 2
     sti                 ; Réactive les interruptions
 
     mov ax, 0x07E0      ; Adresse de destination en mémoire pour le secteur lu (0x7E00, juste après le bootloader)
@@ -27,9 +29,11 @@ main:
     mov ch, 0x00        ; CH = cylindre 0 (numéro de piste du disque)
     mov cl, 0x02        ; Secteur 2
     mov dh, 0x00        ; Tête 0 (surface du plateau du disque dur)
-    mov dl, 0x80        ; Disque dur 0
+    mov dl, [boot_drive]        ; Utilise le vrai numéro de disque fourni par le BIOS
     int 0x13            ; Lit le secteur 2 du disque dur
     jmp 0x07E0:0x0000   ; Far jump vers le stage 2 (recharge cs correctement)
+
+boot_drive db 0
 
 times 510 - ($ - $$) db 0 
 dw 0xAA55
