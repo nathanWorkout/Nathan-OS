@@ -29,8 +29,9 @@ OS From Scratch (Nathan OS):
       ✔ Objectif : make génère un fichier kernel.bin sans erreur @started(26-03-02 20:59) @done(26-03-02 21:05) @lasted(6m30s)
       Franchement galère hein mais c'est rien comparé a ce qui m'attend ! (pareil c pas significatif j'ai pris 20min)
 
-  Bootloader:
-  ✔ Hello world en assembeleur(gestion des segments, mode réel, offsets) @started(26-03-03 18:45) @done(26-03-03 19:43) @lasted(58m27s)
+
+Bootloader:
+  ✔ Hello world en assembleur (gestion des segments, mode réel, offsets) @started(26-03-03 18:45) @done(26-03-03 19:43) @lasted(58m27s)
     Sachant que j'ai commencer en cours pendant un trou d'une heure donc on rajoute une heure
     1er problème : le message ne s'affichait pas à l'écran car org 0x7C00 et ds = 0x07C0
     étaient en conflit — NASM calculait l'offset de message depuis 0x7C00, donc le CPU
@@ -41,29 +42,94 @@ OS From Scratch (Nathan OS):
 
     HELLO WORLD FONCTIONELLLLLLL JSUIS TROPP CONTENT
 
+  ☐ Stage 1 — MBR (512 octets, secteur 0)
+    ✔ Ajouter la signature de boot 0x55AA aux 2 derniers octets @started(26-03-04 15:26) @done(26-03-04 16:20) @lasted(54m25s)
+    ✔ Lire le secteur 2 depuis le disque avec int 0x13 @started(26-03-04 15:44) @done(26-03-04 16:20) @lasted(36m23s)
+    J'ai oublié de lancer la dte de début mais en gros j'y suis depuis 40 minutes (environ 5-10 minutes par lignes)
+    ✔ Sauter vers 0x7E00 @started(26-03-04 16:11) @done(26-03-04 16:20) @lasted(9m27s)
+    ✔ Vérifier : qemu-system-i386 -drive format=raw,file=boot.img — pas de "Boot failed" @started(26-03-04 16:20) @done(26-03-04 16:20) @lasted(37s)
+    Première fois que je suis content d'avoir un écran noir mdrr
 
-  ☐ Écrire l'entête Multiboot (magic number, flags, checksum)
-    ☐ Vérifier avec : grub-file --is-x86-multiboot kernel.bin && echo "OK"
-  ☐ Écrire le point d'entrée en assembleur (boot.asm)
-    ☐ Vérifier que nasm compile boot.asm sans erreur
-  ☐ Initialiser la pile (stack)
-    ☐ Réserver 16Ko pour la stack dans boot.asm
-    ☐ Vérifier que esp pointe bien sur le haut de la stack
-  ☐ Passer en mode protégé 32-bit
-    ☐ Désactiver les interruptions (cli) avant le passage
-    ☐ Activer le bit PE dans cr0
-  ☐ Initialiser la GDT (Global Descriptor Table)
-    ☐ Écrire un segment code (0x00 - 0xFFFFFFFF, ring 0)
-    ☐ Écrire un segment data (0x00 - 0xFFFFFFFF, ring 0)
-    ☐ Charger la GDT avec lgdt
-  ☐ Sauter vers le kernel C (kmain)
-    ☐ Faire un far jump pour recharger cs avec le bon sélecteur
-    ☐ Initialiser ds, es, fs, gs, ss avec le sélecteur data
-  ☐ Créer l'image ISO bootable avec GRUB
-    ☐ Écrire le grub.cfg (menuentry qui charge kernel.bin)
-    ☐ Générer l'ISO avec grub-mkrescue
-  ☐ Tester le boot dans QEMU
-    ☐ Objectif : QEMU démarre, le menu GRUB apparaît, le kernel se lance sans reboot immédiat
+  ☐ Stage 2 — Charger le kernel depuis le disque @started(26-03-04 19:35) J'ai commencer ya 3 heures
+      ✔ Activer la ligne A20 (port 0x92 ou int 0x15) @started(26-03-04 18:59) @done(26-03-04 18:59) @lasted(33s)
+      Encore oublié de start mais ca m'a pris 20minutes j'espère que ça marchera
+      ✔ Lire la memory map BIOS avec int 0x15 / E820 @started(26-03-04 19:00) @done(26-03-04 20:04) @lasted(1h4m23s)
+      IL ME RESTE TELLEMENT A FAIRE RRAAHHHHH JUSTE CA M'A PRIS PLUS D'UNE HEURE
+      ☐ Eh vasy ça marche pas le debuggage va être LLOOONNGGGG @started(26-03-04 20:31)
+      ☐ Formater la partition en FAT32 (mkfs.fat dans le Makefile)
+      ☐ Implémenter un lecteur FAT32 minimal dans le stage 2
+          ☐ Lire le BPB (BIOS Parameter Block) depuis le secteur 0
+          ☐ Trouver le répertoire racine
+          ☐ Chercher le fichier "kernel.bin" par son nom
+          ☐ Lire les clusters du fichier et les écrire en mémoire basse
+      ☐ Copier le kernel vers 0x100000 après passage en mode protégé
+      ☐ Vérifier : GDB → inspecter 0x100000, les bons octets sont là
+
+    ☐ Stage 2 — Charger le kernel depuis le disque
+      ☐ Activer la ligne A20
+          ☐ Essayer via port 0x92 (fast A20)
+          ☐ Vérifier que A20 est actif (test écriture/lecture au dessus de 1Mo)
+          ☐ Fallback via int 0x15 si port 0x92 échoue
+          ☐ Objectif : accès mémoire au dessus de 0xFFFFF sans corruption
+
+      ☐ Lire la memory map BIOS
+          ☐ Appeler int 0x15 / E820 en boucle jusqu'à ebx == 0
+          ☐ Stocker les entrées dans un buffer en mémoire basse
+          ☐ Objectif : avoir la liste des zones RAM utilisables avant de passer en mode protégé
+
+      ☐ Formater la partition en FAT32
+          ☐ Ajouter mkfs.fat dans le Makefile pour formater l'image disque
+          ☐ Copier kernel.bin dans la partition FAT32 via mcopy
+          ☐ Objectif : l'image disque contient un filesystem FAT32 avec kernel.bin dedans
+
+      ☐ Implémenter le lecteur FAT32
+          ☐ Lire le BPB (secteur 0) avec int 0x13
+          ☐ Parser le BPB : secteurs par cluster, secteur début FAT, secteur début données
+          ☐ Calculer l'adresse du répertoire racine depuis le BPB
+          ☐ Lire le répertoire racine cluster par cluster
+          ☐ Chercher l'entrée "KERNEL  BIN" (format 8.3) dans le répertoire
+          ☐ Récupérer le premier cluster du fichier depuis l'entrée
+          ☐ Suivre la chaîne de clusters dans la FAT jusqu'à 0x0FFFFFFF
+          ☐ Lire chaque cluster et l'écrire en mémoire basse (0x10000)
+          ☐ Objectif : kernel.bin entier copié à 0x10000 en RAM
+
+      ☐ Passer en mode protégé 32 bits
+          ☐ Désactiver les interruptions (cli)
+          ☐ Écrire la GDT en mémoire
+              ☐ Entrée 0 : segment nul (8 octets à zéro)
+              ☐ Entrée 1 : segment code ring 0 (base 0, limite 4Go, exécutable)
+              ☐ Entrée 2 : segment data ring 0 (base 0, limite 4Go, lecture/écriture)
+          ☐ Écrire le descripteur GDT (adresse + taille - 1)
+          ☐ Charger la GDT avec lgdt
+          ☐ Activer le bit PE dans cr0
+          ☐ Far jump vers le sélecteur 0x08 pour recharger cs
+          ☐ Initialiser ds, es, fs, gs, ss avec le sélecteur 0x10
+          ☐ Objectif : CPU en mode protégé 32 bits, GDB → cs == 0x08, ds == 0x10
+
+      ☐ Copier le kernel vers 0x100000
+          ☐ Implémenter une routine memcpy 32 bits
+          ☐ Copier de 0x10000 vers 0x100000 (taille = nombre de clusters lus * taille cluster)
+          ☐ Objectif : kernel.bin présent à 0x100000 en RAM
+
+      ☐ Sauter vers le kernel
+          ☐ Initialiser esp à 0x90000
+          ☐ Jump vers 0x100000
+          ☐ Objectif : kmain s'exécute, QEMU ne reboot pas en boucle
+
+      ☐ Créer l'image disque FAT32
+      ☐ Créer une image disque vide avec dd (ex: 32Mo)
+      ☐ Formater en FAT32 avec mkfs.fat
+      ☐ Écrire le MBR dans le secteur 0 avec dd
+      ☐ Écrire le stage 2 dans le secteur 1 avec dd
+      ☐ Copier kernel.bin dans la partition FAT32 avec mcopy
+      ☐ Automatiser tout ça dans le Makefile
+      ☐ Objectif : boot complet jusqu'à kmain dans QEMU
+
+    ☐ Créer la clé USB bootable
+        ☐ sudo dd if=boot.img of=/dev/sdX bs=512
+        ☐ Vérifier que le MBR est bien au secteur 0
+        ☐ Tester le boot depuis la clé sur vrai hardware
+        ☐ Objectif : la machine boote depuis la clé, kmain atteint
 
   Kernel de base:
   ☐ Écrire le point d'entrée kernel en C (kmain)
