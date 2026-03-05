@@ -55,7 +55,8 @@ Bootloader:
       Encore oublié de start mais ca m'a pris 20minutes j'espère que ça marchera
       ✔ Lire la memory map BIOS avec int 0x15 / E820 @started(26-03-04 19:00) @done(26-03-04 20:04) @lasted(1h4m23s)
       IL ME RESTE TELLEMENT A FAIRE RRAAHHHHH JUSTE CA M'A PRIS PLUS D'UNE HEURE
-      ☐ Eh vasy ça marche pas le debuggage va être LLOOONNGGGG @started(26-03-04 20:31)
+      ✔ Eh vasy ça marche pas le debuggage va être LLOOONNGGGG @started(26-03-04 20:31) @done(26-03-05 20:35) @lasted(1d4m35s)
+      MAIS VASY JVAIS PETER MON CRANE GBD A MAL DECODER LE FAR JUMP ET CA A CAUSER UNE ERREUR FAR JUMP ALORS QUE QUAND ON MET UN BREAKPOINT A CETTE ADRESSE TOUT MARCHE NICKEL J'AI PERDU 2h FACILE
       ☐ Formater la partition en FAT32 (mkfs.fat dans le Makefile)
       ☐ Implémenter un lecteur FAT32 minimal dans le stage 2
           ☐ Lire le BPB (BIOS Parameter Block) depuis le secteur 0

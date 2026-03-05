@@ -14,7 +14,7 @@ main:
     mov ds, ax          ; Data Segment à 0
     mov es, ax          ; Extra Segment à 0
 
-    mov [boot_drive], dl        ; Sauvegarde le numéro de disque fourni par le BIOS
+    mov [boot_drive], dl; Sauvegarde le numéro de disque fourni par le BIOS
 
     mov ax, 0x7000      ; Cette adresse car elle est libre en mémoire et ne risque pas d'écraser le bootloader
     mov ss, ax          ; Stack Segment à 0x7000

@@ -37,6 +37,9 @@ break *0x7E00   # début du stage 2
 break *0x7c25   # adresse d'une instruction précise (trouver avec x/30i)
 c               # continuer jusqu'au prochain breakpoint
 
+x/30i 0x7c00    # stage 1
+x/30i 0x7E00    # stage 2
+
 # Avancer instruction par instruction
 si              # step into (rentre dans les interruptions)
 ni              # next instruction (saute par dessus les interruptions)
@@ -44,6 +47,9 @@ ni              # next instruction (saute par dessus les interruptions)
 # Inspecter les registres
 info registers  # tous les registres
 p/x $eax        # un registre précis en hexa
+
+# Hex jump
+hexdump -C boot.img | head -40
 
 # Vérifier le résultat d'un int 0x13
 # Après le breakpoint juste après le int 0x13 :
