@@ -19,9 +19,10 @@ SECTOR_PER_FAT16:    dw 0            ; Nombre de secteurs par FAT en FAT16 (0 po
 SECTOR_PER_TRACK:    dw 63           ; Ce champ dans le BPB indique combien il y a de secteurs sur la piste du disque dur (une ligne circulaire sur la surface) il sert surtout pour les anciens disques durs, mais on le remplit quand même pour être conforme au standard FAT32
 NUMBER_OF_HEAD:      dw 255          ; Ce champ dans le BPB indique combien il y a de têtes de lecture/écriture sur le disque dur (une par surface) il sert a calculer la taille du disque : Taille disque=Cylinders x Heads x Sectors per Track x Bytes per Sector
 HIDDEN_SECTOR:       dd 0            ; Indique combien de secteurs cachés sur le disque ne font pas partie de cette partition (utile pour savoir quand lire car on skip les secteurs cachés)
-TOTAL_SECTORS:       dd 65536        ; Nombre total de secteurs par partition (65536 * 512 = 32Mo)
+TOTAL_SECTORS:       dd 524288       ; Nombre total de secteurs par partition (524288 * 512 = 256Mo)
 
 ; Champs étendus FAT32
+; Juste pour me rappeller mais depuis le BPB, le repertoire racine commence au cluster 2 
 FAT_SIZE:            dd 512          ; Nombre de secteurs utilisés pour chaque FAT
 EXTENDED_FLAGS:      dw 0            ; Champ de 16 bits dans le BPB FAT32, il indique quelle FAT est active et si il y en a plusieurs ou réservé des bits
 FS_VERSION:          dw 0            ; Version du système de fichiers FAT32 (0x0000 pour la version 0.0)
@@ -33,8 +34,9 @@ DRIVE_NUMBER:        db 0x80         ; Numéro de lecteur (0x00 pour le lecteur 
 RESERVED1:           db 0            ; Octet réservé pour usage futur / Windows NT, généralement mis à 0
 BOOT_SIGNATURE:      db 0x29         ; Signature d'extension de boot (0x29 indique que les champs suivants sont valides)
 VOLUME_ID:           dd 0x12345678   ; Identifiant de volume (généralement un nombre aléatoire pour identifier de manière unique la partition)
-VOLUME_LABEL:        db "NATHAN OS  " ; 11 octets pour le label du volume (généralement le nom de la partition)
+VOLUME_LABEL:        db "NATHAN OS  "; 11 octets pour le label du volume (généralement le nom de la partition)
 FS_TYPE:             db "FAT32   "   ; 8 octets pour le type de système de fichiers
+
 
 main:
 ; Nous sommes au début dans le secteur 0 du disque dur : on appelle ça le MBR (Master Boot Record) ou stage 1 du bootloader

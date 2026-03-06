@@ -57,12 +57,15 @@ Bootloader:
       IL ME RESTE TELLEMENT A FAIRE RRAAHHHHH JUSTE CA M'A PRIS PLUS D'UNE HEURE
       ✔ Eh vasy ça marche pas le debuggage va être LLOOONNGGGG @started(26-03-04 20:31) @done(26-03-05 20:35) @lasted(1d4m35s)
       MAIS VASY JVAIS PETER MON CRANE GBD A MAL DECODER LE FAR JUMP ET CA A CAUSER UNE ERREUR FAR JUMP ALORS QUE QUAND ON MET UN BREAKPOINT A CETTE ADRESSE TOUT MARCHE NICKEL J'AI PERDU 2h FACILE
-      ☐ Formater la partition en FAT32 (mkfs.fat dans le Makefile)
-      ☐ Implémenter un lecteur FAT32 minimal dans le stage 2
-          ☐ Lire le BPB (BIOS Parameter Block) depuis le secteur 0
+
+      ☐ Implémenter un lecteur FAT32 minimal dans le stage 2 @started(26-03-06 18:57)
+          ✔ Lire le BPB (BIOS Parameter Block) depuis le secteur 0 @started(26-03-06 18:57) j'ai commencer ya 2 heures @done(26-03-06 19:35) @lasted(38m29s)
+          Le code est vraimment très simple mai sla théorie est giga longue mais c'est bon j'ai compris comment ça marche en plus j'ai un code vraimment propre et bien documenter
+      ☐ Formater la partition en FAT32 (mkfs.fat dans le Makefile) @started(26-03-06 20:18)
           ☐ Trouver le répertoire racine
           ☐ Chercher le fichier "kernel.bin" par son nom
           ☐ Lire les clusters du fichier et les écrire en mémoire basse
+
       ☐ Copier le kernel vers 0x100000 après passage en mode protégé
       ☐ Vérifier : GDB → inspecter 0x100000, les bons octets sont là
 

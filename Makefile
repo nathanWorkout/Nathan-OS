@@ -46,10 +46,17 @@ $(BUILD)/stage1.bin: $(BOOT)/stage1.asm
 $(BUILD)/stage2.bin: $(BOOT)/stage2.asm
 	$(AS) -f bin $< -o $@
 
-img: $(BUILD)/stage1.bin $(BUILD)/stage2.bin
-	dd if=/dev/zero of=$(IMG) bs=512 count=2048
+img: $(BUILD)/stage1.bin $(BUILD)/stage2.bin $(BUILD)/kernel.bin
+	# Créer une image vide de 256Mo (524288 secteurs * 512 octets)
+	dd if=/dev/zero of=$(IMG) bs=512 count=524288
+	# Formater en FAT32 (-R 32 = 32 secteurs réservés, cohérent avec le BPB)
+	mkfs.fat -F 32 -R 32 -S 512 $(IMG)
+	# Écrire stage1 par-dessus le boot sector FAT32 (garde le BPB, remplace le code)
 	dd if=$(BUILD)/stage1.bin of=$(IMG) bs=512 seek=0 conv=notrunc
+	# Écrire stage2 dans le secteur 1 (dans les secteurs réservés)
 	dd if=$(BUILD)/stage2.bin of=$(IMG) bs=512 seek=1 conv=notrunc
+	# Copier kernel.bin dans la partition FAT32
+	mcopy -i $(IMG) $(BUILD)/kernel.bin ::kernel.bin
 
 run-img: img
 	qemu-system-i386 -drive format=raw,file=$(IMG),index=0,media=disk
