@@ -39,7 +39,16 @@ A20_FAIL:
 A20_OK:
 ; A20 est maintenant activé, on peut accéder à toute la mémoire au-delà de 1Mo
 
-hang:
-    cli                 ; Désactive les interruptions - temporaire, sera remplacé par la suite du bootloader
-    hlt                 ; Stoppe le CPU
-    jmp hang            ; Si le CPU se réveille (NMI), on reboucle
+read_cluster_loop: 
+; FAT_start = ReservedSector = 32
+
+; (LBA c'est juste le numéro de secteur)
+; cylindre = LBA / (secteurs_par_piste * têtes)
+; tête     = (LBA / secteurs_par_piste) % têtes
+; secteur  = (LBA % secteurs_par_piste) + 1
+
+; LBA = ?, secteur par piste = ?, têtes = ?
+
+
+
+
