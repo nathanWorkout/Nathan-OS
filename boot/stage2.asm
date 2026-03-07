@@ -42,13 +42,13 @@ A20_OK:
 read_cluster_loop: 
 ; FAT_start = ReservedSector = 32
 
-; (LBA c'est juste le numéro de secteur)
+; (LBA c'est juste le numéro de secteur) = 1056
 ; cylindre = LBA / (secteurs_par_piste * têtes)
 ; tête     = (LBA / secteurs_par_piste) % têtes
 ; secteur  = (LBA % secteurs_par_piste) + 1
 
 ; valeurs du disque
-; LBA = 500118191                ; dernier LBA valide du disque
+; LBA = 1056                ; secteur du répertoire racine
 ; secteurs_par_piste = 63
 ; têtes = 255
 
@@ -59,25 +59,80 @@ read_cluster_loop:
 
 ; calcul cylindre
 ; cylindre = LBA / secteurs_par_cylindre
-; cylindre = 500118191 / 16065
-; cylindre = 31129
+; cylindre = 1056 / 16065
+; cylindre = 0
 
 ; calcul tête
 ; tête = (LBA / secteurs_par_piste) % têtes
-; tête = (500118191 / 63) % 255
-; tête = 7938383 % 255
-; tête = 254
+; tête = (1056 / 63) % 255
+; tête = 16 % 255
+; tête = 16
 
 ; calcul secteur
 ; secteur = (LBA % secteurs_par_piste) + 1
-; secteur = (500118191 % 63) + 1
-; secteur = 62 + 1
-; secteur = 63
+; secteur = (1056 % 63) + 1
+; secteur = 48 + 1
+; secteur = 49
 
 ; résultat CHS final
-; cylindre = 31129
-; tête = 254
-; secteur = 63
+; cylindre = 0
+; tête = 16
+; secteur = 49
+
+    mov ah, 0x02        ; Fonction 0x02 : Lire des secteurs
+    mov al, 1           ; Lire 1 secteur
+    mov ch, 0           ; CH = cylindre 0 
+    mov cl, 49          ; Secteur 49
+    mov dh, 16          ; Tête 16
+    mov dl, 0x80        ; Premier disque dur (0)
+    mov ax, 0x0900      ; 
+    mov es, ax          ; es:bx = adresse de destination pour le secteur lu (0x9000:0x0000 = 0x90000)
+    xor bx, bx          ; Offset à 0
+    int 0x13            ; Lit le secteur 49 du disque dur
+    
+    mov si, 0x9000      ; Adresse du secteur lu (0x90000)
+    mov al, [si]    
+    cmp al, 0x00        ; Vérifie que le premier octet du secteur n'est pas 0 (indique un secteur vide)
+    je next_entry       ; Si le secteur est vide, continuer la recherche
+    cmp al, 0xE5        ; Vérifie que le premier octet du secteur n'est pas 0xE5 (l'entrée est inutilisé)
+    je next_entry   ; Saute si = 0
+    mov al, [si + 10]   ; 10 car le 10eme offset correspoond au 10eme octet (0 offset = 1er octet)
+    cmp al, 0x0F        ; Vérifie que l'entré de nom du fichier n'est pas trop longue
+    je next_entry       ; Pareil
+    mov di, kernel_name ; Adresse du nom de fichier attendu
+    mov cx, 11          ; KERNEL  BIN
+
+read_name: 
+    mov al, [si]        ; lire un octet du secteur
+    mov bl, [di]        ; lire un octet du nom attendu
+    cmp al, bl
+    jne next_entry      ; Passer à l'entrée suivante du répertoire racine
+    inc si              ; Passer à l'octet suivant du secteur
+    inc di              ; Passer à l'octet suivant du nom attendu
+    loop read_name      ; Répéter pour les 11 octets du nom
+    jmp kernel_found      ; Si le nom correspond, on a trouvé le kernel
+
+next_entry: 
+    add si, 32          ; 32 car chaque entrée de répertoire fait 32 octets, on passe à la prochaine entrée
+    jmp read_cluster_loop ; Recommencer la boucle pour lire la prochaine entrée du répertoire racine
+
+kernel_found:
+    sub si, 11
+    mov bx, [si + 0x14]  ; cluster haut (16 bits)
+    shl ebx, 16          ; décale vers le haut          ; Foutu spec de FAT que j'avais pas vu et qui m'a bloqué un peu mais j'ai trouvé ça
+    mov bx, [si + 0x1A]  ; cluster bas (16 bits)
+    ; ebx contient maintenant le numéro de cluster complet
+    ; POV J'UTILISE ENFIN UN REGISTRE 32 BITS POUR LA PREMIERE FOIS WOOHOO 
+
+    ; Maintenant faut calculer le secteur FAT qui corespond au secteur lu dans ebx
+    ; secteur FAT = FAT_start + (cluster * 4) / 512
+    ; offset      = (cluster * 4) % 512
+    
+
+
+
+; Le format de fat 32 est de 11 octets : le nom du fichier et l'extenssion donc on dois les remplir
+kernel_name db "KERNEL  BIN"
 
 
 
