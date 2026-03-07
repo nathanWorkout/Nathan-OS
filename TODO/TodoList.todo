@@ -62,9 +62,9 @@ Bootloader:
           ✔ Lire le BPB (BIOS Parameter Block) depuis le secteur 0 @started(26-03-06 18:57) j'ai commencer ya 2 heures @done(26-03-06 19:35) @lasted(38m29s)
           Le code est vraimment très simple mai sla théorie est giga longue mais c'est bon j'ai compris comment ça marche en plus j'ai un code vraimment propre et bien documenter
       ☐ Formater la partition en FAT32 (mkfs.fat dans le Makefile) @started(26-03-06 20:18)
-          ☐ Trouver le répertoire racine
-          ☐ Chercher le fichier "kernel.bin" par son nom
-          ☐ Lire les clusters du fichier et les écrire en mémoire basse
+          ☐ Trouver le répertoire racine @started(26-03-06 20:34)
+          ☐ Chercher le fichier "kernel.bin" par son nom @started(26-03-06 20:34)
+          ☐ Lire les clusters du fichier et les écrire en mémoire basse @started(26-03-06 20:34)
 
       ☐ Copier le kernel vers 0x100000 après passage en mode protégé
       ☐ Vérifier : GDB → inspecter 0x100000, les bons octets sont là

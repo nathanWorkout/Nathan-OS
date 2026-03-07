@@ -47,8 +47,37 @@ read_cluster_loop:
 ; tête     = (LBA / secteurs_par_piste) % têtes
 ; secteur  = (LBA % secteurs_par_piste) + 1
 
-; LBA = ?, secteur par piste = ?, têtes = ?
+; valeurs du disque
+; LBA = 500118191                ; dernier LBA valide du disque
+; secteurs_par_piste = 63
+; têtes = 255
 
+; calcul secteurs par cylindre
+; secteurs_par_cylindre = secteurs_par_piste * têtes
+; secteurs_par_cylindre = 63 * 255
+; secteurs_par_cylindre = 16065
+
+; calcul cylindre
+; cylindre = LBA / secteurs_par_cylindre
+; cylindre = 500118191 / 16065
+; cylindre = 31129
+
+; calcul tête
+; tête = (LBA / secteurs_par_piste) % têtes
+; tête = (500118191 / 63) % 255
+; tête = 7938383 % 255
+; tête = 254
+
+; calcul secteur
+; secteur = (LBA % secteurs_par_piste) + 1
+; secteur = (500118191 % 63) + 1
+; secteur = 62 + 1
+; secteur = 63
+
+; résultat CHS final
+; cylindre = 31129
+; tête = 254
+; secteur = 63
 
 
 
