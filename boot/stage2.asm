@@ -90,7 +90,7 @@ read_cluster_loop:
     xor bx, bx          ; Offset à 0
     int 0x13            ; Lit le secteur 49 du disque dur
     
-    mov si, 0x9000      ; Adresse du secteur lu (0x90000)
+    mov si, 0x9000      ; Adresse du secteur lu (0x9000)
     mov al, [si]    
     cmp al, 0x00        ; Vérifie que le premier octet du secteur n'est pas 0 (indique un secteur vide)
     je next_entry       ; Si le secteur est vide, continuer la recherche
@@ -100,6 +100,7 @@ read_cluster_loop:
     cmp al, 0x0F        ; Vérifie que l'entré de nom du fichier n'est pas trop longue
     je next_entry       ; Pareil
     mov di, kernel_name ; Adresse du nom de fichier attendu
+    mov [current_entry], si ; Sauvegarde le début de l'entrée actuelle pour pouvoir y revenir plus tard
     mov cx, 11          ; KERNEL  BIN
 
 read_name: 
@@ -118,6 +119,7 @@ next_entry:
 
 kernel_found:
     sub si, 11
+    mov si, [current_entry] ; Revenir au début de l'entrée du kernel trouvée
     mov bx, [si + 0x14]  ; cluster haut (16 bits)
     shl ebx, 16          ; décale vers le haut          ; Foutu spec de FAT que j'avais pas vu et qui m'a bloqué un peu mais j'ai trouvé ça
     mov bx, [si + 0x1A]  ; cluster bas (16 bits)
@@ -133,6 +135,7 @@ kernel_found:
 
 ; Le format de fat 32 est de 11 octets : le nom du fichier et l'extenssion donc on dois les remplir
 kernel_name db "KERNEL  BIN"
+current_entry dw 0              ; Pour Sauvegarder le début de l'entrée
 
 
 

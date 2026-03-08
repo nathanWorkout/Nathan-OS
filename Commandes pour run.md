@@ -27,6 +27,9 @@ gdb -ex "target remote localhost:1234"
 set pagination off
 set architecture i8086
 
+# En une commande : 
+gdb -ex "target remote localhost:1234" -ex "set pagination off" -ex "set architecture i8086"
+
 # Voir le code désassemblé à une adresse
 x/30i 0x7c00    # stage 1
 x/30i 0x7E00    # stage 2
@@ -47,6 +50,7 @@ ni              # next instruction (saute par dessus les interruptions)
 # Inspecter les registres
 info registers  # tous les registres
 p/x $eax        # un registre précis en hexa
+p/d $ebx         ; un registre en décimal
 
 # Hex jump
 hexdump -C boot.img | head -40
@@ -57,6 +61,13 @@ hexdump -C boot.img | head -40
 #   eflags → ne doit PAS contenir CF (carry flag = erreur)
 #   es -> doit valoir 0x7E0 si la destination était 0x7E00
 
-# Vérifier qu'une zone mémoire contient du code
-x/20i 0x7E00    # désassemble 20 instructions à cette adresse
-                # si tu vois que des "add %al,(%eax)" → mémoire vide (zéros)
+# Inspecter la mémoire
+x/4xb 0x9000     ; 4 octets en hexa à 0x9000
+x/16xb 0x9000    ; 16 octets en hexa
+x/s 0x9000       ; string à cette adresse
+x/4xw 0x9000     ; 4 mots de 32 bits
+
+# Désasembler
+x/10i 0x7E00     ; désassembler 10 instructions à 0x7E00
+
+
