@@ -92,18 +92,18 @@ read_cluster_loop:
         
         mov si, 0x9000      ; si pointe sur la première entrée du répertoire racine
 
-    check_entry:            ; début de la boucle — APRÈS la lecture disque, on ne relit pas à chaque tour
+    check_entry:            ; début de la boucle - APRES la lecture disque, on ne relit pas à chaque tour
         mov al, [si]    
         cmp al, 0x00        ; Vérifie que le premier octet du secteur n'est pas 0 (indique un secteur vide)
         je dir_end          ; fin du répertoire, le kernel n'existe pas sur le disque
         cmp al, 0xE5        ; Vérifie que le premier octet du secteur n'est pas 0xE5 (l'entrée est inutilisé)
         je next_entry
-        mov al, [si + 11]   ; offset 11 = octet d'attributs de l'entrée (pas 10 — offset 10 = dernier octet du nom)
+        mov al, [si + 11]   ; offset 11 = octet d'attributs de l'entrée (pas 10 ; offset 10 = dernier octet du nom)
         cmp al, 0x0F        ; 0x0F = attribut LFN (Long File Name), entrée à ignorer car pas au format 8.3
         je next_entry
         mov di, kernel_name ; Adresse du nom de fichier attendu
         mov [current_entry], si ; Sauvegarde le début de l'entrée actuelle pour pouvoir y revenir plus tard
-        push si             ; sauvegarde si sur la pile — read_name va l'incrémenter, il faut pouvoir revenir
+        push si             ; sauvegarde si sur la pile - read_name va l'incrémenter, il faut pouvoir revenir
         mov cx, 11          ; KERNEL  BIN
 
     read_name: 
@@ -140,7 +140,7 @@ read_cluster_loop:
         ; secteur FAT = FAT_start + (cluster * 4) / 512
         ; offset      = (cluster * 4) % 512
 
-        
+
 
 
 

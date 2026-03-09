@@ -6,102 +6,84 @@ OS From Scratch (Nathan OS):
       ✔ Vérifier avec : i686-elf-gcc --version @started(26-03-02 20:06) @done(26-03-02 20:06) @lasted(38s)
     ✔ Installer NASM (assembleur) @started(26-03-02 20:07) @done(26-03-02 20:08) @lasted(1m8s)
       ✔ Vérifier avec : nasm --version @started(26-03-02 20:08) @done(26-03-02 20:08) @lasted(11s)
-    C'était déjà installler avant
+    C'était déjà installé avant
     ✔ Installer QEMU (émulateur pour tester) @done(26-03-02 20:11)
       ✔ Vérifier avec : qemu-system-i386 --version @started(26-03-02 20:11) @done(26-03-02 20:11) @lasted(45s)
     ✔ Installer GRUB + xorriso (pour créer l'image bootable) @started(26-03-02 20:12) @done(26-03-02 20:12) @lasted(43s)
       ✔ Vérifier avec : grub-mkrescue --version && xorriso --version @started(26-03-02 20:12) @done(26-03-02 20:12) @lasted(47s)
     ✔ Créer la structure de dossiers du projet: @started(26-03-02 20:12) @done(26-03-02 20:13) @lasted(1m54s)
-      ✔ boot/        — fichiers assembleur du bootloader @started(26-03-02 20:13) @done(26-03-02 20:14) @lasted(1m5s)
-      ✔ kernel/      — fichiers C du kernel @started(26-03-02 20:13) @done(26-03-02 20:14) @lasted(1m6s)
-      ✔ drivers/     — drivers (VGA, clavier, série) @started(26-03-02 20:13) @done(26-03-02 20:14) @lasted(1m7s)
-      ✔ lib/         — mini libc @started(26-03-02 20:13) @done(26-03-02 20:14) @lasted(1m7s)
-      ✔ lang/        — sources de NPL @started(26-03-02 20:13) @done(26-03-02 20:14) @lasted(1m8s)
-      ✔ iso/         — image ISO générée @started(26-03-02 20:14) @done(26-03-02 20:14) @lasted(8s)
-      ✔ build/       — fichiers compilés (.o) @started(26-03-02 20:14) @done(26-03-02 20:14) @lasted(9s)
-      ☐ Ajouter les dossiers manquants pour la suite du projet
-          ☐ fs/          — système de fichiers (VFS, FAT32, ext2...)
-          ☐ gui/         — système graphique (framebuffer, fenêtres, widgets)
-          ☐ input/       — couche d'abstraction clavier/souris
-          ☐ apps/        — applications (terminal graphique, file manager)
-          ☐ elf/         — loader ELF
+      ✔ boot/        — fichiers assembleur du bootloader @done(26-03-02 20:14)
+      ✔ kernel/      — fichiers C du kernel @done(26-03-02 20:14)
+      ✔ drivers/     — drivers (VGA, clavier, série) @done(26-03-02 20:14)
+      ✔ lib/         — mini libc @done(26-03-02 20:14)
+      ✔ lang/        — sources de NPL @done(26-03-02 20:14)
+      ✔ iso/         — image ISO générée @done(26-03-02 20:14)
+      ✔ build/       — fichiers compilés (.o) @done(26-03-02 20:14)
+      ✔ Ajouter les dossiers manquants @started(26-03-09 20:47) @done(26-03-09 20:49) @lasted(2m10s)
+          ✔ fs/          — système de fichiers (VFS, FAT32, ramfs, devfs) @started(26-03-09 20:47) @done(26-03-09 20:49) @lasted(2m10s)
+          ✔ gui/         — système graphique (framebuffer, fenêtres, widgets) @started(26-03-09 20:47) @done(26-03-09 20:49) @lasted(2m12s)
+          ✔ input/       — couche d'abstraction clavier/souris @started(26-03-09 20:47) @done(26-03-09 20:49) @lasted(2m13s)
+          ✔ apps/        — applications (terminal graphique, file manager) @started(26-03-09 20:47) @done(26-03-09 20:49) @lasted(2m14s)
+          ✔ elf/         — loader ELF @started(26-03-09 20:47) @done(26-03-09 20:49) @lasted(2m15s)
+          ✔ proc/        — processus, threads, scheduler, context switch, TSS @started(26-03-09 20:47) @done(26-03-09 20:49) @lasted(2m16s)
+          ✔ ipc/         — pipes, signaux @started(26-03-09 20:47) @done(26-03-09 20:49) @lasted(2m16s)
+          ✔ dev/         — device manager + driver model @started(26-03-09 20:47) @done(26-03-09 20:49) @lasted(2m17s)
+          ✔ gfx/         — couche graphique abstraite (au dessus du framebuffer) @started(26-03-09 20:47) @done(26-03-09 20:49) @lasted(2m18s)
     ✔ Écrire le Makefile principal @started(26-03-02 20:14) @done(26-03-02 20:57) @lasted(43m50s)
-    j'ai rename le projet donc le temp n'est pas significatif mais j'ai mis environ une bonne demie heure 
-      ✔ Vérifier avec : make — aucune erreur, les .o sont générés dans build/ @started(26-03-02 20:57) @done(26-03-02 20:58) @lasted(1m21s)
-    ✔ Écrire le linker script (linker.ld) @started(26-03-02 20:58) @done(26-03-02 20:58) @lasted(26s)
-    pareil c'est pas significatif mais j'ai mis 15-20min
-      ✔ Vérifier que le kernel est bien linkié à l'adresse 0x100000 @started(26-03-02 20:59) @done(26-03-02 20:59) @lasted(5s)
-    ✔ Tester le build avec un kernel vide (kmain vide) @started(26-03-02 21:05) @done(26-03-02 21:05) @lasted(28s)
-      ✔ Objectif : make génère un fichier kernel.bin sans erreur @started(26-03-02 20:59) @done(26-03-02 21:05) @lasted(6m30s)
-      Franchement galère hein mais c'est rien comparé a ce qui m'attend ! (pareil c pas significatif j'ai pris 20min)
+      ✔ Vérifier avec : make — aucune erreur, les .o sont générés dans build/ @done(26-03-02 20:58)
+    ✔ Écrire le linker script (linker.ld) @done(26-03-02 20:58)
+      ✔ Vérifier que le kernel est bien linkié à l'adresse 0x100000 @done(26-03-02 20:59)
+    ✔ Tester le build avec un kernel vide (kmain vide) @done(26-03-02 21:05)
+      ✔ Objectif : make génère un fichier kernel.bin sans erreur @done(26-03-02 21:05)
 
 
   Bootloader:
     ✔ Hello world en assembleur (gestion des segments, mode réel, offsets) @started(26-03-03 18:45) @done(26-03-03 19:43) @lasted(58m27s)
-      Sachant que j'ai commencer en cours pendant un trou d'une heure donc on rajoute une heure
       1er problème : le message ne s'affichait pas à l'écran car org 0x7C00 et ds = 0x07C0
       étaient en conflit — NASM calculait l'offset de message depuis 0x7C00, donc le CPU
       cherchait le message à la mauvaise adresse en mémoire.
-
       Solution : changer org 0x7C00 en org 0x0000 pour que les offsets partent de 0,
-      ce qui colle avec ds = 0x07C0 (0x07C0 * 16 + offset = 0x7C00 + offset )
-
+      ce qui colle avec ds = 0x07C0 (0x07C0 * 16 + offset = 0x7C00 + offset)
       HELLO WORLD FONCTIONELLLLLLL JSUIS TROPP CONTENT
 
-    ☐ Stage 1 — MBR (512 octets, secteur 0)
-      ✔ Ajouter la signature de boot 0x55AA aux 2 derniers octets @started(26-03-04 15:26) @done(26-03-04 16:20) @lasted(54m25s)
-      ✔ Lire le secteur 2 depuis le disque avec int 0x13 @started(26-03-04 15:44) @done(26-03-04 16:20) @lasted(36m23s)
-      J'ai oublié de lancer la dte de début mais en gros j'y suis depuis 40 minutes (environ 5-10 minutes par lignes)
-      ✔ Sauter vers 0x7E00 @started(26-03-04 16:11) @done(26-03-04 16:20) @lasted(9m27s)
-      ✔ Vérifier : qemu-system-i386 -drive format=raw,file=boot.img — pas de "Boot failed" @started(26-03-04 16:20) @done(26-03-04 16:20) @lasted(37s)
+    ✔ Stage 1 — MBR (512 octets, secteur 0)
+      ✔ Ajouter la signature de boot 0x55AA aux 2 derniers octets @done(26-03-04 16:20)
+      ✔ Lire le secteur 2 depuis le disque avec int 0x13 @done(26-03-04 16:20)
+      ✔ Sauter vers 0x7E00 @done(26-03-04 16:20)
+      ✔ Vérifier : qemu-system-i386 -drive format=raw,file=boot.img — pas de "Boot failed" @done(26-03-04 16:20)
       Première fois que je suis content d'avoir un écran noir mdrr
 
-    ☐ Stage 2 — Charger le kernel depuis le disque @started(26-03-04 19:35) J'ai commencer ya 3 heures
-        ✔ Activer la ligne A20 (port 0x92 ou int 0x15) @started(26-03-04 18:59) @done(26-03-04 18:59) @lasted(33s)
-        Encore oublié de start mais ca m'a pris 20minutes j'espère que ça marchera
-        ✔ Lire la memory map BIOS avec int 0x15 / E820 @started(26-03-04 19:00) @done(26-03-04 20:04) @lasted(1h4m23s)
+    ☐ Stage 2 — Charger le kernel depuis le disque @started(26-03-04 19:35)
+        ✔ Activer la ligne A20 (port 0x92) @done(26-03-04 18:59)
+        ✔ Lire la memory map BIOS avec int 0x15 / E820 @done(26-03-04 20:04)
         IL ME RESTE TELLEMENT A FAIRE RRAAHHHHH JUSTE CA M'A PRIS PLUS D'UNE HEURE
-        ✔ Eh vasy ça marche pas le debuggage va être LLOOONNGGGG @started(26-03-04 20:31) @done(26-03-05 20:35) @lasted(1d4m35s)
-        MAIS VASY JVAIS PETER MON CRANE GBD A MAL DECODER LE FAR JUMP ET CA A CAUSER UNE ERREUR FAR JUMP ALORS QUE QUAND ON MET UN BREAKPOINT A CETTE ADRESSE TOUT MARCHE NICKEL J'AI PERDU 2h FACILE
+        ✔ Debugger le far jump (GDB décodait mal, perdu 2h) @done(26-03-05 20:35)
+        MAIS VASY JVAIS PETER MON CRANE — GDB A MAL DECODE LE FAR JUMP ET CA A CAUSER UNE ERREUR
+        ALORS QUE QUAND ON MET UN BREAKPOINT A CETTE ADRESSE TOUT MARCHE NICKEL J'AI PERDU 2h FACILE
 
-        ☐ Implémenter un lecteur FAT32 minimal dans le stage 2 @started(26-03-06 18:57)
-            ✔ Lire le BPB (BIOS Parameter Block) depuis le secteur 0 @started(26-03-06 18:57) j'ai commencer ya 2 heures @done(26-03-06 19:35) @lasted(38m29s)
-            Le code est vraimment très simple mai sla théorie est giga longue mais c'est bon j'ai compris comment ça marche en plus j'ai un code vraimment propre et bien documenter
-        ☐ Formater la partition en FAT32 (mkfs.fat dans le Makefile) @started(26-03-06 20:18)
-            ☐ Trouver le répertoire racine @started(26-03-06 20:34)
-            ☐ Chercher le fichier "kernel.bin" par son nom @started(26-03-06 20:34)
-            ☐ Lire les clusters du fichier et les écrire en mémoire basse @started(26-03-06 20:34)
+        ☐ Implémenter le lecteur FAT32 minimal dans le stage 2
+            ✔ Lire le BPB (BIOS Parameter Block) depuis le secteur 0 @done(26-03-06 19:35)
+            Le code est vraiment très simple mais la théorie est giga longue
+            j'ai compris comment ça marche, code propre et bien documenté
+            ✔ Formater la partition en FAT32 (mkfs.fat dans le Makefile) @started(26-03-09 20:49) @done(26-03-09 20:49) @lasted(59s)
+            ✔ Copier kernel.bin dans la partition FAT32 via mcopy @started(26-03-09 20:50) @done(26-03-09 20:50) @lasted(6s)
+            ✔ Ajouter mkfs.fat dans le Makefile pour formater l'image disque @started(26-03-09 20:50) @done(26-03-09 20:50) @lasted(8s)
+                ✔ Objectif : l'image disque contient un filesystem FAT32 avec kernel.bin dedans @started(26-03-09 20:50) @done(26-03-09 20:50) @lasted(11s)
+            ☐ Trouver le répertoire racine @started(26-03-09 20:51)
+            ca a commencer ya 3 jours
+                ✔ Parser le BPB : secteurs par cluster, secteur début FAT, secteur début données @started(26-03-09 20:51) @done(26-03-09 20:51) @lasted(56s)
+                ✔ Calculer l'adresse du répertoire racine depuis le BPB @started(26-03-09 20:52) @done(26-03-09 20:52) @lasted(12s)
+                ☐ Lire le répertoire racine cluster par cluster @started(26-03-09 20:52)
+            ☐ Chercher le fichier "KERNEL  BIN" (format 8.3) dans le répertoire
+                ☐ Récupérer le premier cluster du fichier depuis l'entrée
+                ☐ Suivre la chaîne de clusters dans la FAT jusqu'à 0x0FFFFFFF
+            ☐ Lire les clusters du fichier et les écrire en mémoire basse (0x10000)
+                ☐ Objectif : kernel.bin entier copié à 0x10000 en RAM
 
-        ☐ Copier le kernel vers 0x100000 après passage en mode protégé
-        ☐ Vérifier : GDB → inspecter 0x100000, les bons octets sont là
-
-      ☐ Stage 2 — Charger le kernel depuis le disque
-        ☐ Activer la ligne A20
-            ☐ Essayer via port 0x92 (fast A20)
+        ☐ Activer la ligne A20 — robuste
             ☐ Vérifier que A20 est actif (test écriture/lecture au dessus de 1Mo)
             ☐ Fallback via int 0x15 si port 0x92 échoue
             ☐ Objectif : accès mémoire au dessus de 0xFFFFF sans corruption
-
-        ☐ Lire la memory map BIOS
-            ☐ Appeler int 0x15 / E820 en boucle jusqu'à ebx == 0
-            ☐ Stocker les entrées dans un buffer en mémoire basse
-            ☐ Objectif : avoir la liste des zones RAM utilisables avant de passer en mode protégé
-
-        ☐ Formater la partition en FAT32
-            ☐ Ajouter mkfs.fat dans le Makefile pour formater l'image disque
-            ☐ Copier kernel.bin dans la partition FAT32 via mcopy
-            ☐ Objectif : l'image disque contient un filesystem FAT32 avec kernel.bin dedans
-
-        ☐ Implémenter le lecteur FAT32
-            ☐ Lire le BPB (secteur 0) avec int 0x13
-            ☐ Parser le BPB : secteurs par cluster, secteur début FAT, secteur début données
-            ☐ Calculer l'adresse du répertoire racine depuis le BPB
-            ☐ Lire le répertoire racine cluster par cluster
-            ☐ Chercher l'entrée "KERNEL  BIN" (format 8.3) dans le répertoire
-            ☐ Récupérer le premier cluster du fichier depuis l'entrée
-            ☐ Suivre la chaîne de clusters dans la FAT jusqu'à 0x0FFFFFFF
-            ☐ Lire chaque cluster et l'écrire en mémoire basse (0x10000)
-            ☐ Objectif : kernel.bin entier copié à 0x10000 en RAM
 
         ☐ Passer en mode protégé 32 bits
             ☐ Désactiver les interruptions (cli)
@@ -109,6 +91,8 @@ OS From Scratch (Nathan OS):
                 ☐ Entrée 0 : segment nul (8 octets à zéro)
                 ☐ Entrée 1 : segment code ring 0 (base 0, limite 4Go, exécutable)
                 ☐ Entrée 2 : segment data ring 0 (base 0, limite 4Go, lecture/écriture)
+                ☐ Entrée 3 : segment code ring 3 (DPL=3, pour les programmes user)
+                ☐ Entrée 4 : segment data ring 3 (DPL=3)
             ☐ Écrire le descripteur GDT (adresse + taille - 1)
             ☐ Charger la GDT avec lgdt
             ☐ Activer le bit PE dans cr0
@@ -118,682 +102,750 @@ OS From Scratch (Nathan OS):
 
         ☐ Copier le kernel vers 0x100000
             ☐ Implémenter une routine memcpy 32 bits
-            ☐ Copier de 0x10000 vers 0x100000 (taille = nombre de clusters lus * taille cluster)
-            ☐ Objectif : kernel.bin présent à 0x100000 en RAM
+            ☐ Copier de 0x10000 vers 0x100000 (taille = clusters lus * taille cluster)
+            ☐ Vérifier : GDB → inspecter 0x100000, les bons octets sont là
 
         ☐ Sauter vers le kernel
-            ☐ Initialiser esp à 0x90000
+            ☐ Initialiser esp à 0x90000 (pile temporaire avant kernel stack)
             ☐ Jump vers 0x100000
             ☐ Objectif : kmain s'exécute, QEMU ne reboot pas en boucle
 
-        ☐ Créer l'image disque FAT32
-        ☐ Créer une image disque vide avec dd (ex: 32Mo)
-        ☐ Formater en FAT32 avec mkfs.fat
-        ☐ Écrire le MBR dans le secteur 0 avec dd
-        ☐ Écrire le stage 2 dans le secteur 1 avec dd
-        ☐ Copier kernel.bin dans la partition FAT32 avec mcopy
-        ☐ Automatiser tout ça dans le Makefile
-        ☐ Objectif : boot complet jusqu'à kmain dans QEMU
+        ☐ Créer l'image disque FAT32 complète
+            ☐ Créer une image disque vide avec dd (ex: 32Mo)
+            ☐ Formater en FAT32 avec mkfs.fat
+            ☐ Écrire le MBR dans le secteur 0 avec dd
+            ☐ Écrire le stage 2 dans le secteur 1 avec dd
+            ☐ Copier kernel.bin dans la partition FAT32 avec mcopy
+            ☐ Automatiser tout ça dans le Makefile
+            ☐ Objectif : boot complet jusqu'à kmain dans QEMU
 
-      ☐ Créer la clé USB bootable
-          ☐ sudo dd if=boot.img of=/dev/sdX bs=512
-          ☐ Vérifier que le MBR est bien au secteur 0
-          ☐ Tester le boot depuis la clé sur vrai hardware
-          ☐ Objectif : la machine boote depuis la clé, kmain atteint
-
-
-  Kernel de base:
-    ☐ Écrire le point d'entrée kernel en C (kmain)
-      ☐ Juste une fonction kmain() vide qui boucle à l'infini (while(1))
-      ☐ Objectif : QEMU démarre sans triple fault (pas de reboot en boucle)
-    ☐ Implémenter le driver VGA (affichage texte 80x25)
-      ☐ Écrire dans la mémoire vidéo (0xB8000)
-      ☐ Gérer les couleurs (attribut octet)
-      ☐ Gérer le curseur (position x/y)
-      ☐ Gérer le scroll quand on atteint la dernière ligne
-      ☐ Objectif : afficher un caractère 'A' à l'écran en haut à gauche
-    ☐ Implémenter putchar / puts / printk
-      ☐ putchar — affiche un caractère à la position courante
-      ☐ puts — affiche une chaîne
-      ☐ printk — affiche une chaîne formatée (%d, %s, %x minimum)
-      ☐ Gérer \n (retour à la ligne) et \t (tabulation)
-      ☐ Objectif : afficher "Hello World from Nathan OS!" à l'écran
-    ☐ Écrire un panic kernel (affichage erreur fatale + halt)
-      ☐ Afficher le message d'erreur en rouge
-      ☐ Afficher le fichier et la ligne où le panic a été appelé
-      ☐ Halt le CPU (cli + hlt en boucle)
-      ☐ Objectif : appeler panic("test") et voir le message rouge à l'écran
-    ☐ Initialiser l'IDT (Interrupt Descriptor Table)
-      ☐ Écrire la structure IDT (256 entrées)
-      ☐ Écrire les stubs assembleur pour chaque interruption
-      ☐ Charger l'IDT avec lidt
-      ☐ Objectif : lidt s'exécute sans crash
-    ☐ Écrire les handlers d'exceptions CPU
-      ☐ Exception 0 — division par zéro
-      ☐ Exception 13 — general protection fault
-      ☐ Exception 14 — page fault
-      ☐ Afficher le numéro et le nom de l'exception via panic
-      ☐ Objectif : provoquer une division par zéro dans kmain, voir le message d'erreur
-    ☐ Initialiser le PIC 8259 (remapper les IRQ vers 32-47)
-      ☐ Envoyer les commandes d'initialisation au PIC master et slave
-      ☐ Remapper IRQ0-7 vers vecteurs 32-39
-      ☐ Remapper IRQ8-15 vers vecteurs 40-47
-      ☐ Masquer toutes les IRQ pour l'instant
-      ☐ Objectif : plus de conflits entre exceptions CPU et IRQ hardware
-    ☐ Activer les interruptions (sti)
-      ☐ Démasquer les IRQ nécessaires
-      ☐ Appeler sti
-      ☐ Objectif : le kernel tourne toujours sans crash après sti
-    ☐ Implémenter le timer (IRQ0 — PIT)
-      ☐ Configurer le PIT à 100Hz (10ms par tick)
-      ☐ Écrire le handler IRQ0
-      ☐ Incrémenter un compteur de ticks
-      ☐ Envoyer le EOI (End Of Interrupt) au PIC en fin de handler
-      ☐ Objectif : afficher le compteur de ticks qui s'incrémente à l'écran
+    ☐ Créer la clé USB bootable
+        ☐ sudo dd if=boot.img of=/dev/sdX bs=512
+        ☐ Vérifier que le MBR est bien au secteur 0
+        ☐ Tester le boot depuis la clé sur vrai hardware
+        ☐ Objectif : la machine boote depuis la clé, kmain atteint
 
 
-  Gestion mémoire:
-    ☐ Détecter la RAM disponible (via Multiboot info)
-      ☐ Lire la memory map passée par GRUB (multiboot_info_t)
-      ☐ Parcourir les entrées mmap pour trouver les zones utilisables
-      ☐ Calculer la RAM totale disponible
-      ☐ Objectif : afficher "RAM détectée : X Mo" au démarrage
-    ☐ Écrire le gestionnaire de mémoire physique (bitmap allocator)
-      ☐ Créer un bitmap (1 bit = 1 page de 4Ko)
-      ☐ Marquer les zones kernel et bootloader comme utilisées
-      ☐ Marquer les zones non-RAM comme utilisées
-      ☐ Implémenter alloc_frame() — trouve et réserve une page libre
-      ☐ Implémenter free_frame() — libère une page
-      ☐ Objectif : allouer 3 pages, afficher leurs adresses, les libérer sans crash
-    ☐ Implémenter la pagination (page directory, page tables)
-      ☐ Créer le page directory (1024 entrées)
-      ☐ Créer les page tables (1024 entrées chacune)
-      ☐ Identity mapper les 4 premiers Mo (adresse virtuelle = adresse physique)
-      ☐ Identity mapper la mémoire vidéo VGA (0xB8000)
-      ☐ Mapper le kernel à 0x100000
-    ☐ Activer la pagination (cr0, cr3)
-      ☐ Charger l'adresse du page directory dans cr3
-      ☐ Activer le bit PG dans cr0
-      ☐ Objectif : la pagination est activée, le kernel tourne toujours, l'écran VGA fonctionne encore
-    ☐ Écrire kmalloc / kfree (heap kernel)
-      ☐ Définir une zone heap dans l'espace virtuel (ex: 0x200000 - 0x800000)
-      ☐ Implémenter un allocateur par blocs avec header (taille, libre/occupé)
-      ☐ Implémenter kmalloc(size) — retourne un pointeur aligné
-      ☐ Implémenter kfree(ptr) — libère le bloc
-      ☐ Implémenter la fusion de blocs libres contigus (coalescence)
-      ☐ Objectif : allouer une string avec kmalloc, écrire dedans, afficher, libérer sans crash
-    ☐ Tester les allocations mémoire
-      ☐ Allouer et libérer 100 blocs de tailles variées
-      ☐ Vérifier qu'il n'y a pas de fuite mémoire (heap size stable)
-      ☐ Provoquer un accès à une page non mappée et vérifier que le page fault handler s'affiche
-      ☐ Objectif : le heap est stable, les erreurs mémoire sont catchées proprement
+  ══════════════════════════════════════════════════════════════════
+  PHASE 1 — KERNEL MINIMAL
+  ══════════════════════════════════════════════════════════════════
+
+  Initialisation de la pile kernel:
+    ☐ Initialiser esp dans l'entry point assembleur (AVANT call kmain)
+        ☐ Définir kernel_stack (8Ko) dans le linker script
+        ☐ mov esp, kernel_stack_top dans start.asm
+        ☐ Vérifier : GDB → esp pointe bien vers kernel_stack_top
+        NOTE: Sans ça, le premier push en C corrompt de la mémoire aléatoire
+
+  IDT — Interrupt Descriptor Table (CRITIQUE — avant sti):
+    ☐ Écrire les 256 stubs assembleur d'interruption
+        ☐ Stubs sans error code (exceptions 0-7, 9, 16-31)
+        ☐ Stubs avec error code (exceptions 8, 10-14, 17)
+        ☐ Stubs IRQ hardware (vecteurs 32-47 après remap PIC)
+        ☐ Format : push 0 (dummy error), push num_irq, jmp isr_common_stub
+    ☐ Écrire isr_common_stub en assembleur
+        ☐ Sauvegarder tous les registres (pushad + segments ds/es/fs/gs)
+        ☐ Appeler le dispatcher C : void isr_handler(registers_t *r)
+        ☐ Restaurer les registres et iret
+    ☐ Remplir la table IDT (256 descripteurs × 8 octets)
+        ☐ Chaque entrée : offset bas, sélecteur (0x08), flags (0x8E pour ring0), offset haut
+        ☐ Différencier interrupt gate (IF=0 pendant handler) vs trap gate (syscalls)
+    ☐ Charger l'IDT avec lidt (pointeur + taille)
+    ☐ Objectif : lidt s'exécute sans crash
+
+  Handlers d'exceptions CPU:
+    ☐ Exception 0  — #DE Division par zéro → afficher + halt
+    ☐ Exception 6  — #UD Instruction invalide → afficher + halt
+    ☐ Exception 8  — #DF Double fault → afficher + halt (debug triple faults)
+    ☐ Exception 13 — #GP General Protection Fault → afficher error code + halt
+    ☐ Exception 14 — #PF Page Fault → lire cr2, afficher adresse + error code + halt
+    ☐ panic kernel : message rouge, __FILE__ + __LINE__, cli + hlt
+    ☐ Test : provoquer 1/0 dans kmain → message visible, pas de reboot silencieux
+
+  Driver VGA texte 80x25:
+    ☐ Écrire dans la mémoire vidéo (0xB8000)
+    ☐ Gérer couleurs, curseur (x,y), scroll ligne 25
+    ☐ Mettre à jour le curseur hardware (ports 0x3D4 / 0x3D5)
+    ☐ Objectif : afficher 'A' en blanc sur fond noir
+
+  printk / puts / putchar:
+    ☐ putchar, puts
+    ☐ printk(fmt, ...) — %d, %s, %x, %u, %c, \n, \t
+    ☐ Objectif : printk("val=%d\n", 42) s'affiche correctement
+
+  PIC 8259 — Remap IRQ:
+    ☐ Init PIC master (0x20) et slave (0xA0)
+    ☐ Remappe IRQ 0-7 → vecteurs 32-39, IRQ 8-15 → vecteurs 40-47
+    ☐ Masquer toutes les IRQ sauf IRQ0
+    NOTE: Sans ce remap, IRQ0 timer = vecteur 8 = #DF Double Fault
+
+  Timer PIT IRQ0:
+    ☐ Configurer PIT à 100Hz (diviseur = 1193180 / 100)
+    ☐ Handler IRQ0 : incrémenter ticks, envoyer EOI (port 0x20)
+    ☐ Démasquer IRQ0, appeler sti (UNIQUEMENT après IDT + PIC corrects)
+    ☐ Objectif : ticks s'incrémentent, pas de triple fault
+
+  Driver port série COM1:
+    ☐ Initialiser COM1 (38400 baud, 8N1)
+    ☐ serial_putchar, serial_printf
+    ☐ QEMU : -serial stdio
+    ☐ Objectif : logs kernel dans le terminal hôte en parallèle du VGA
 
 
-  Drivers de base:
-    ☐ Implémenter le driver port série COM1 (logs de debug)
-      ☐ Initialiser le port COM1 (baud rate 38400)
-      ☐ Implémenter serial_putchar() — envoie un caractère sur COM1
-      ☐ Implémenter serial_printf() — envoie une string formatée sur COM1
-      ☐ Activer les logs série dans QEMU (option -serial stdio)
-      ☐ Objectif : voir les logs du kernel dans le terminal hôte QEMU en parallèle de l'écran VGA
+  ══════════════════════════════════════════════════════════════════
+  PHASE 2 — GESTION MÉMOIRE
+  ══════════════════════════════════════════════════════════════════
+
+  PMM — Physical Memory Manager (bitmap allocator):
+    ☐ Lire la memory map E820 du bootloader
+        ☐ Parser les zones utilisables (type == 1), calculer RAM totale
+        ☐ Afficher "RAM détectée : X Mo"
+    ☐ Bitmap (1 bit = 1 page de 4Ko)
+        ☐ Placer le bitmap après le kernel en mémoire physique connue
+        ☐ Tout marquer utilisé par défaut
+        ☐ Libérer les zones E820 utilisables
+        ☐ Re-marquer kernel + bootloader + bitmap + zones MMIO comme utilisés
+    ☐ alloc_frame() — retourne l'adresse physique d'une page libre
+    ☐ free_frame(addr) — libère une page
+    ☐ Objectif : allouer 3 pages, afficher leurs adresses, les libérer sans crash
+
+  VMM — Virtual Memory Manager (pagination):
+    ☐ Créer le page directory kernel (1024 entrées, aligné 4Ko)
+    ☐ Identity mapper les 4 premiers Mo (BIOS, VGA 0xB8000, code kernel)
+    ☐ Mapper le kernel à 0x100000
+    ☐ Activer la pagination : cr3 = page directory, cr0 |= 0x80000000
+    ☐ Vérifier : kernel tourne toujours, VGA accessible après activation
+    ☐ vmm_map_page(virt, phys, flags) — mapper une page virtuelle → physique
+    ☐ vmm_unmap_page(virt) — supprimer un mapping, invalider le TLB (invlpg)
+    ☐ Améliorer le handler #PF : distinguer bug nul vs page non mappée
+    ☐ Objectif : pagination active, kernel stable
+
+  Heap kernel — kmalloc / kfree:
+    ☐ Zone heap dans l'espace virtuel (ex: 0x200000 – 0x800000)
+    ☐ Allocateur par blocs : header {taille, libre/occupé, magic}
+    ☐ kmalloc(size) — pointeur aligné 8 octets
+    ☐ kfree(ptr) — vérifie magic, libère
+    ☐ Coalescence — fusionner les blocs libres contigus
+    ☐ sbrk interne — étendre le heap via alloc_frame() + vmm_map_page()
+    ☐ Tests : 100 alloc/free de tailles variées, heap stable, pas de fuite
 
 
-  Bus matériel (PCI) — prérequis avant USB et GPU:
-    ☐ Implémenter l'énumération PCI
-      ☐ Implémenter pci_read_config_word(bus, slot, func, offset) via ports 0xCF8 / 0xCFC
-      ☐ Implémenter pci_write_config_word(bus, slot, func, offset, value)
-      ☐ Scanner tous les bus/slot/func (0-255 / 0-31 / 0-7) pour détecter les devices
-      ☐ Afficher pour chaque device : bus, slot, vendor_id, device_id, class_code
-      ☐ Objectif : afficher la liste des périphériques PCI au démarrage dans QEMU
-    ☐ Écrire une table de devices reconnus
-      ☐ Associer vendor_id + device_id à un nom lisible (ex: 0x8086 / 0x7010 = "Intel PIIX IDE")
-      ☐ Identifier les controllers USB présents (class 0x0C, subclass 0x03)
-      ☐ Identifier le GPU / framebuffer (class 0x03)
-      ☐ Objectif : afficher "USB xHCI trouvé à bus X slot Y" et "GPU VGA trouvé à bus X slot Y"
-    ☐ Implémenter la gestion des BARs (Base Address Registers)
-      ☐ Lire les 6 BARs de chaque device
-      ☐ Distinguer BAR mémoire (MMIO) et BAR I/O (port)
-      ☐ Calculer la taille de chaque BAR (write all-ones, read back)
-      ☐ Objectif : afficher les adresses MMIO des devices USB et GPU
+  ══════════════════════════════════════════════════════════════════
+  PHASE 3 — PROCESSUS & SCHEDULER
+  ══════════════════════════════════════════════════════════════════
+  NOTE SUR SCHEDULER ≠ PROCESS MANAGER :
+  Le scheduler décide QUAND un processus tourne.
+  Le process manager décide QUI existe, avec quels droits, quelle mémoire.
+  Les deux sont nécessaires. Un scheduler sans process manager = threads
+  kernel sans isolation. Un process manager sans scheduler = séquentiel.
+
+  Structures process_t et thread_t:
+    ☐ process_t
+        ☐ pid, state (RUNNING/READY/BLOCKED/ZOMBIE)
+        ☐ cr3 — page directory propre à ce processus (espace d'adressage)
+        ☐ threads[] — liste des threads du processus
+        ☐ fds[64] — table de file descriptors
+        ☐ parent_pid, exit_code
+        ☐ cwd[256] — répertoire courant (pour le VFS)
+    ☐ thread_t
+        ☐ tid, state
+        ☐ kernel_stack, kernel_esp — pile kernel + sauvegarde esp
+        ☐ user_stack — pile utilisateur (NULL pour les kthreads)
+        ☐ Pointeur vers process_t parent
+    NOTE: Séparer process et thread dès le départ évite une refonte douloureuse
+    plus tard. Linux fait cette distinction depuis le début.
+
+  TSS — Task State Segment (OBLIGATOIRE avant ring 3):
+    ☐ Définir tss_entry_t (104 octets, i686)
+    ☐ esp0 = sommet de la pile kernel du thread courant
+    ☐ Ajouter le descripteur TSS dans la GDT (entrée 5)
+    ☐ Charger avec ltr
+    ☐ Mettre à jour esp0 à chaque context switch
+    NOTE: Sans TSS, le premier int 0x80 depuis ring 3 = GPF ou pile corrompue
+
+  Context Switch en assembleur:
+    ☐ switch_context(thread_t *old, thread_t *new) en .asm
+        ☐ Sauvegarder esi, edi, ebx, ebp, esp → old->kernel_esp
+        ☐ Si cr3 change : charger new->process->cr3 (flush TLB automatique)
+        ☐ Mettre à jour tss.esp0 = new->kernel_stack_top
+        ☐ Charger esp ← new->kernel_esp
+        ☐ Restaurer esi, edi, ebx, ebp
+        ☐ ret — retourne dans le contexte du nouveau thread
+    NOTE: Pas en C pur — le compilateur réorganise les registres librement
+
+  Scheduler round-robin:
+    ☐ run_queue — liste des threads READY
+    ☐ schedule() — choisit le prochain thread READY, appelle switch_context
+    ☐ Appeler schedule() en fin de handler IRQ0
+    ☐ Thread idle (pid 0) — boucle hlt quand rien d'autre n'est READY
+    ☐ Objectif : 2 kthreads affichent du texte alternativement
+
+  Spinlocks (thread-safety sous IRQ):
+    ☐ spinlock_t avec lock/unlock (xchg atomique en assembleur)
+    ☐ Protéger kmalloc / kfree avec un spinlock
+    ☐ Objectif : kmalloc depuis un handler IRQ ne corrompt pas le heap
 
 
-  Drivers USB:
-    ☐ Architecture USB — couches
-      ☐ Écrire la couche HCD (Host Controller Driver) — abstraction au dessus des controllers
-      ☐ Définir les structures : usb_device, usb_endpoint, usb_transfer
-      ☐ Définir les callbacks : hcd_submit_transfer, hcd_reset_port, hcd_poll
-      ☐ Objectif : une interface générique que UHCI, EHCI et xHCI implémentent
+  ══════════════════════════════════════════════════════════════════
+  PHASE 4 — VFS & SYSTÈME DE FICHIERS
+  ══════════════════════════════════════════════════════════════════
+  NOTE SUR L'ARBORESCENCE :
+  "/" est toujours un RamFS — jamais FAT32 directement.
+  FAT32 se monte sur "/disk". Avantages :
+  - écriture possible partout sans toucher le disque
+  - /tmp, /config, /dev fonctionnent sans disque
+  - si le disque est absent au boot, l'OS démarre quand même
 
-    ☐ UHCI (USB 1.1 — Intel, très commun sous QEMU)
-      ☐ Trouver le controller UHCI via PCI (class 0x0C, subclass 0x03, prog-if 0x00)
-      ☐ Lire le BAR I/O (ports de contrôle)
-      ☐ Implémenter l'initialisation UHCI (reset, FRNUM, FLBASEADDR)
-      ☐ Allouer la Frame List (1024 entrées alignées 4Ko)
-      ☐ Implémenter les Transfer Descriptors (TD) et Queue Heads (QH)
-      ☐ Implémenter un transfert Control (SETUP + DATA + STATUS)
-      ☐ Implémenter un transfert Interrupt (polling périodique)
-      ☐ Objectif : envoyer un GET_DESCRIPTOR au clavier USB et récupérer son descripteur
+  Structure de l'arborescence au boot :
+    /              ← RamFS (racine, toujours présente)
+    ├── bin/       ← exécutables ELF copiés depuis FAT32 au démarrage
+    ├── dev/       ← DevFS (null, zero, tty, com1...)
+    ├── tmp/       ← fichiers temporaires en mémoire
+    ├── config/    ← configuration (user.cfg, keymap.cfg, oobe.done...)
+    └── disk/      ← point de montage FAT32 (la vraie partition disque)
 
-    ☐ EHCI (USB 2.0 — plus courant sur vrai hardware)
-      ☐ Trouver le controller EHCI via PCI (prog-if 0x20)
-      ☐ Lire le BAR MMIO
-      ☐ Mapper le BAR MMIO dans l'espace virtuel kernel
-      ☐ Parser les Capability Registers (CAPLENGTH, HCIVERSION, HCSPARAMS, HCCPARAMS)
-      ☐ Implémenter l'initialisation EHCI (USBCMD reset, USBINTR, PERIODICLISTBASE, ASYNCLISTADDR)
-      ☐ Implémenter les Queue Heads (QH) et Transfer Descriptors (qTD)
-      ☐ Implémenter les transferts Control et Bulk
-      ☐ Gérer le companion controller (hand-off vers UHCI/OHCI pour USB 1.1)
-      ☐ Objectif : détecter et initialiser un périphérique USB 2.0
+  VFS — Virtual Filesystem (couche d'abstraction):
+    ☐ vfs_node_t {nom, type, taille, inode, ops, fs_data, ref_count}
+    ☐ vfs_ops_t {open, close, read, write, readdir, mkdir, stat, unlink}
+    ☐ mount_table[] — liste des points de montage {chemin, fs_driver, device}
+    ☐ vfs_open(path) — résoudre le chemin, trouver le bon fs_driver, appeler open
+    ☐ vfs_read / vfs_write / vfs_readdir / vfs_close
+    ☐ vfs_mount(path, fs_driver, device)
+    ☐ vfs_resolve(path) — résoudre un chemin absolu ou relatif (utilise process->cwd)
+    ☐ Objectif : interface générique que tous les filesystems implémentent
 
-    ☐ xHCI (USB 3.x — hardware moderne)
-      ☐ Trouver le controller xHCI via PCI (prog-if 0x30)
-      ☐ Mapper le BAR MMIO
-      ☐ Parser les Capability Registers
-      ☐ Implémenter l'initialisation xHCI (reset, DCBAAP, Command Ring, Event Ring)
-      ☐ Implémenter les Transfer Request Blocks (TRB)
-      ☐ Implémenter les Command TRBs (Enable Slot, Address Device, Configure Endpoint)
-      ☐ Implémenter les transferts Control, Bulk et Interrupt
-      ☐ Objectif : détecter un périphérique USB 3.x, afficher son descripteur
+  RamFS (monté sur "/"):
+    ☐ Inodes en mémoire (kmalloc), contenu dans des blocs kmalloc
+    ☐ ramfs_open, ramfs_read, ramfs_write, ramfs_readdir, ramfs_mkdir, ramfs_unlink
+    ☐ Monter sur "/" au boot, créer /bin /dev /tmp /config /disk
+    ☐ Objectif : créer /tmp/test.txt, écrire, relire, supprimer
 
-    ☐ Énumération USB générique
-      ☐ Implémenter usb_enumerate_device() — valable pour UHCI/EHCI/xHCI
-      ☐ Envoyer GET_DESCRIPTOR (Device Descriptor) à l'adresse 0
-      ☐ Assigner une adresse USB (SET_ADDRESS)
-      ☐ Lire le Device Descriptor complet
-      ☐ Lire le Configuration Descriptor
-      ☐ Lire les Interface Descriptors et Endpoint Descriptors
-      ☐ Identifier la classe du périphérique (HID = 0x03, Mass Storage = 0x08)
-      ☐ Appeler le driver de classe correspondant
-      ☐ Objectif : brancher un clavier USB, voir "Clavier HID détecté" à l'écran
+  DevFS (monté sur "/dev"):
+    ☐ Pseudo-filesystem — pas de stockage réel, les ops appellent directement les drivers
+    ☐ /dev/null  — read retourne 0, write ignore
+    ☐ /dev/zero  — read retourne des zéros infinis
+    ☐ /dev/tty   — connecté au terminal VGA courant (via le driver VGA)
+    ☐ /dev/com1  — connecté au port série COM1
+    ☐ devfs_register(name, read_fn, write_fn) — ajouter un device en une ligne
+    ☐ Objectif : write(open("/dev/null"), buf, 100) → silence, pas de crash
 
-    ☐ Driver HID clavier USB
-      ☐ Identifier l'endpoint Interrupt IN du clavier
-      ☐ Envoyer SET_CONFIGURATION pour activer la configuration
-      ☐ Envoyer SET_IDLE (HID) pour configurer le taux de rapport
-      ☐ Envoyer GET_REPORT_DESCRIPTOR et parser les Usage Pages
-      ☐ Configurer un transfert Interrupt périodique sur l'endpoint IN
-      ☐ Interpréter les HID reports (modifier keys + keycodes[6])
-      ☐ Convertir les keycodes HID en scancodes internes
-      ☐ Objectif : appuyer sur une touche, voir le caractère affiché à l'écran
+  Driver FAT32 kernel (monté sur "/disk"):
+    ☐ Porter le code BPB du stage 2 (ne pas réécrire from scratch)
+    ☐ fat32_open, fat32_read, fat32_readdir, fat32_close
+    ☐ Suivre les chaînes de clusters dans la FAT
+    ☐ vfs_mount("/disk", &fat32_driver, &disk_device)
+    ☐ Objectif : vfs_open("/disk/test.txt") → lecture correcte du fichier
 
-    ☐ Driver HID souris USB
-      ☐ Identifier l'endpoint Interrupt IN de la souris
-      ☐ Configurer un transfert Interrupt périodique
-      ☐ Interpréter les HID reports (boutons + delta X/Y + delta scroll)
-      ☐ Maintenir la position absolue de la souris (clamp dans les bornes écran)
-      ☐ Objectif : bouger la souris, voir les coordonnées X/Y changer à l'écran
+  File descriptors:
+    ☐ fd_table_t par processus (process_t.fds[], 64 entrées)
+    ☐ fd 0 = stdin (/dev/tty), fd 1 = stdout (/dev/tty), fd 2 = stderr (/dev/com1)
+    ☐ fd_alloc(node) — retourne le premier fd libre, stocke le vfs_node
+    ☐ fd_free(fd) — décrémente ref_count, ferme si 0
+    ☐ fd_dup2(old, new) — pour les redirections > et <
 
 
-  Couche d'abstraction des entrées (Input Layer):
-    ☐ Définir les structures d'événements d'entrée
-      ☐ input_event { type, code, value } — inspiré de Linux input subsystem
-      ☐ Types : INPUT_KEY, INPUT_MOUSE_MOVE, INPUT_MOUSE_BUTTON, INPUT_SCROLL
-      ☐ Codes touches : KEY_A ... KEY_Z, KEY_ENTER, KEY_BACKSPACE, KEY_UP, KEY_DOWN...
-      ☐ Objectif : un type d'événement unifié pour toutes les sources
-    ☐ Implémenter une file d'événements (ring buffer)
-      ☐ Ring buffer de 256 input_event
-      ☐ input_push_event() — appelé par les drivers (clavier, souris)
-      ☐ input_pop_event() — appelé par le GUI / shell
-      ☐ input_has_event() — vérifie si la file est non vide
-      ☐ Objectif : le driver clavier USB pousse un événement, le shell le consomme
-    ☐ Implémenter la keymap (HID keycode → caractère)
-      ☐ Table de conversion HID → ASCII (AZERTY français)
-      ☐ Gérer Shift, Caps Lock, AltGr pour les caractères spéciaux
-      ☐ Gérer les touches mortes (accents)
-      ☐ Objectif : appuyer sur 'A' en AZERTY, récupérer 'a' ou 'A' selon Shift
-    ☐ Exposer une API unifiée
-      ☐ get_key() — retourne le prochain caractère (bloquant)
-      ☐ get_key_nonblock() — retourne -1 si rien
-      ☐ get_mouse_state(int *x, int *y, uint8_t *buttons)
-      ☐ Objectif : le shell et le GUI utilisent cette API sans connaître le driver sous-jacent
+  ══════════════════════════════════════════════════════════════════
+  PHASE 5 — SHELL TEXTE
+  ══════════════════════════════════════════════════════════════════
+  NOTE: Clavier PS/2 (IRQ1, port 0x60) — 20 lignes de code, zero dépendance USB.
+  L'input layer est défini ici avec son interface abstraite.
+  PS/2 et USB HID pousseront tous les deux dans le même ring buffer.
+
+  Clavier PS/2:
+    ☐ Handler IRQ1 (vecteur 33 après remap)
+    ☐ Lire scancode depuis port 0x60
+    ☐ Table scancode → ASCII (AZERTY, Shift, Caps Lock)
+    ☐ Pousser dans le ring buffer input_event
+    ☐ Objectif : taper une lettre → caractère récupéré par get_key()
+
+  Input Layer — interface unifiée PS/2 + USB + souris:
+    ☐ input_event {type, code, value}
+        ☐ Types : INPUT_KEY, INPUT_MOUSE_MOVE, INPUT_MOUSE_BUTTON, INPUT_SCROLL
+        ☐ Codes clavier : KEY_A…KEY_Z, KEY_ENTER, KEY_BACKSPACE, KEY_UP…
+    ☐ Ring buffer 256 entrées
+    ☐ input_push_event() — drivers appellent ça
+    ☐ input_pop_event(), input_has_event()
+    ☐ get_key() — bloquant (yield si rien, pas de busy-wait)
+    ☐ get_key_nonblock() — retourne -1 si vide
+    ☐ get_mouse_state(int *x, int *y, uint8_t *buttons)
+    ☐ Objectif : le shell appelle get_key() sans savoir si c'est PS/2 ou USB
+
+  Shell texte (REPL):
+    ☐ readline()
+        ☐ Lire depuis get_key(), buffer jusqu'au \n (max 256 chars)
+        ☐ Backspace : effacer buffer + écran
+        ☐ Flèches gauche/droite : déplacer curseur, insérer/supprimer au milieu
+        ☐ Flèches haut/bas : historique (tableau circulaire 50 entrées)
+    ☐ Prompt "Nathan OS > " colorisé, repositionné après chaque commande
+    ☐ Parser de commandes : split espaces, premier token = commande
+    ☐ Commandes :
+        ☐ help, clear, echo [texte], mem, reboot
+        ☐ ls [chemin], cat [fichier], mkdir [nom], rm [fichier]
+        ☐ pwd, cd [chemin] — utilise process->cwd
+    ☐ Objectif : shell interactif stable, toutes les commandes sans crash
 
 
-  Système de fichiers (VFS):
-    ☐ Définir la couche VFS (Virtual Filesystem)
-      ☐ Structures : vfs_node (nom, type, taille, inode, ops)
-      ☐ Opérations : open, close, read, write, readdir, mkdir, stat
-      ☐ Table de montage : mount_point { chemin, fs_driver, device }
-      ☐ Objectif : une interface générique que FAT32, ext2, ramfs implémentent
-    ☐ Implémenter un driver FAT32 kernel
-      ☐ Lire le BPB depuis le premier secteur de la partition
-      ☐ Parser les tables FAT (suivre les chaînes de clusters)
-      ☐ Lire le répertoire racine et les sous-répertoires
-      ☐ Implémenter fat32_open(), fat32_read(), fat32_readdir(), fat32_close()
-      ☐ Objectif : lire un fichier "test.txt" depuis la partition FAT32 et afficher son contenu
-    ☐ Implémenter un RamFS (filesystem en mémoire)
-      ☐ Stocker les fichiers dans des blocs kmalloc
-      ☐ Implémenter ramfs_open(), ramfs_read(), ramfs_write(), ramfs_readdir()
-      ☐ Monter le RamFS à la racine au boot
-      ☐ Objectif : créer un fichier en RAM, écrire dedans, le relire
-    ☐ Monter le FAT32 dans le VFS
-      ☐ vfs_mount("/", fat32_driver, disk_device)
-      ☐ vfs_open("/kernel.bin") retourne un vfs_node valide
-      ☐ Objectif : ouvrir et lire kernel.bin via le VFS
-    ☐ Implémenter les commandes shell liées au VFS
-      ☐ ls [chemin] — liste le contenu d'un répertoire
-      ☐ cat [fichier] — affiche le contenu d'un fichier
-      ☐ mkdir [nom] — crée un répertoire (RamFS)
-      ☐ Objectif : taper "ls /" et voir la liste des fichiers à la racine
+  ══════════════════════════════════════════════════════════════════
+  PHASE 6 — MINI LIBC
+  ══════════════════════════════════════════════════════════════════
+  NOTE: La mini libc arrive ICI, avant le userland et le GUI.
+  Le GUI utilise memcpy (double buffering), strlen (titres), malloc (back buffers).
+  Le userland en a besoin pour compiler ses programmes.
+  NPL en a besoin pour son portage.
+  Ordre logique : libc → userland → GUI → NPL.
+
+  string.h:
+    ☐ strlen, strcpy, strncpy, strcmp, strncmp, strcat, strncat, strchr, strstr
+    ☐ Tests limites : NULL, chaîne vide, chaîne sans \0
+
+  memory (string.h):
+    ☐ memcpy, memset, memmove, memcmp
+    ☐ Tests : overlapping buffers pour memmove, patterns connus pour memcmp
+
+  ctype.h:
+    ☐ isdigit, isalpha, isalnum, isspace, isupper, islower, toupper, tolower
+
+  stdlib.h:
+    ☐ malloc(size) — wrapper kmalloc
+    ☐ free(ptr) — wrapper kfree
+    ☐ realloc(ptr, size) — allouer + copier + libérer
+    ☐ atoi, itoa(int n, char *buf, int base)
+    ☐ exit(int code) — sys_exit si en ring 3, halt si en ring 0
+    ☐ abort() — panic kernel
+
+  stdio.h (minimal):
+    ☐ printf(fmt, ...) — %d, %s, %x, %c, %u, %p, padding minimal
+    ☐ putchar, puts
+    ☐ sprintf(buf, fmt, ...), snprintf(buf, n, fmt, ...)
+
+  Validation:
+    ☐ Compiler les sources NPL avec la mini libc uniquement
+    ☐ Objectif : tous les fichiers NPL compilent sans erreur ni warning
 
 
-  Loader ELF:
-    ☐ Parser les en-têtes ELF
-      ☐ Vérifier le magic number (0x7F 'E' 'L' 'F')
-      ☐ Vérifier le type (ET_EXEC = exécutable, ET_DYN = partagé)
-      ☐ Vérifier l'architecture cible (e_machine = EM_386 pour i686)
-      ☐ Lire l'entry point (e_entry)
-      ☐ Objectif : valider un ELF compilé avec i686-elf-gcc, afficher son entry point
-    ☐ Charger les segments PT_LOAD
-      ☐ Parcourir les Program Headers (e_phoff, e_phnum)
-      ☐ Pour chaque segment PT_LOAD : allouer des pages, copier le contenu depuis le fichier
-      ☐ Gérer p_filesz (données dans le fichier) vs p_memsz (taille en mémoire, BSS = zéro)
-      ☐ Mapper les segments aux adresses virtuelles p_vaddr
-      ☐ Appliquer les permissions (PF_R, PF_W, PF_X) dans les page tables
-      ☐ Objectif : charger un programme ELF simple en mémoire, vérifier les segments avec GDB
-    ☐ Implémenter le saut vers l'entry point ELF
-      ☐ Initialiser la pile utilisateur (stack au sommet de l'espace utilisateur)
-      ☐ Passer argc / argv / envp sur la pile
-      ☐ Sauter à e_entry en ring 3 (mode utilisateur) via iret
-      ☐ Objectif : un programme ELF "hello world" minimal s'exécute et affiche du texte
-    ☐ Syscalls de base (interface user/kernel)
-      ☐ Implémenter le mécanisme syscall (int 0x80 ou sysenter)
-      ☐ Syscall 1 : sys_write(fd, buf, len) — écrire sur le terminal
-      ☐ Syscall 2 : sys_read(fd, buf, len) — lire depuis le terminal
-      ☐ Syscall 3 : sys_exit(code) — terminer le processus
-      ☐ Syscall 4 : sys_open(path, flags) — ouvrir un fichier VFS
-      ☐ Syscall 5 : sys_close(fd) — fermer un fichier
-      ☐ Objectif : programme ELF utilisateur capable d'afficher "hello" et quitter proprement
-    ☐ Gestion basique des processus
-      ☐ Définir la structure process_t (pid, état, page directory, stack, registres)
-      ☐ Implémenter process_create(elf_path) — charge un ELF et crée un processus
-      ☐ Implémenter process_exit(code) — libère les ressources du processus
-      ☐ Implémenter un scheduler round-robin simple (switch sur IRQ0)
-      ☐ Objectif : lancer 2 processus ELF en parallèle, les deux affichent du texte alternativement
+  ══════════════════════════════════════════════════════════════════
+  PHASE 7 — USERLAND (ring 3 + syscalls)
+  ══════════════════════════════════════════════════════════════════
+  NOTE: C'est la différence fondamentale entre un OS jouet et un OS sérieux.
+  En ring 0, tout programme peut écrire n'importe où en mémoire et crasher le kernel.
+  En ring 3, une segfault = le processus est tué, le kernel continue de tourner.
+  Sans cette phase, exec/NPL/apps GUI tournent tous en ring 0 : dangereux.
+
+  Espaces d'adressage séparés par processus:
+    ☐ vmm_create_address_space() — nouveau page directory, copie les mappings kernel
+    ☐ Pages kernel marquées supervisor-only (ring 3 lève un #PF s'il y touche)
+    ☐ Zone utilisateur : 0x400000 – 0xBFFFFFFF
+    ☐ vmm_destroy_address_space(cr3) — libérer toutes les pages user + page tables
+    ☐ Objectif : deux processus ont des cr3 différents, écriture isolée
+
+  Loader ELF (ring 3):
+    ☐ Vérifier magic 0x7F 'E' 'L' 'F', type ET_EXEC, architecture EM_386
+    ☐ Lire e_entry (point d'entrée)
+    ☐ Pour chaque segment PT_LOAD :
+        ☐ alloc_frame() + vmm_map_page() aux adresses p_vaddr
+        ☐ Copier p_filesz octets depuis le fichier ELF
+        ☐ Mettre à zéro les octets p_memsz - p_filesz (BSS)
+        ☐ Appliquer permissions PF_R / PF_W / PF_X dans les page tables
+    ☐ Allouer la pile user (1-4 pages en haut de l'espace user)
+    ☐ Pousser argc / argv / envp sur la pile user
+    ☐ Sauter vers e_entry en ring 3 via iret
+        ☐ Stack iret : ss_user(0x23), esp_user, eflags|0x200, cs_user(0x1B), e_entry
+    ☐ Objectif : programme ELF hello world s'exécute, appelle sys_write, quitte proprement
+
+  Syscall interface (int 0x80):
+    ☐ Handler IDT vecteur 0x80 (trap gate, DPL=3 pour que ring 3 puisse l'appeler)
+    ☐ Dispatcher : switch(eax) → sys_*
+    ☐ VALIDATION OBLIGATOIRE de chaque pointeur reçu en syscall
+        ☐ is_user_addr(ptr, len) — ptr dans 0x400000…0xBFFFFFFF et mappé
+        ☐ copy_from_user(k_dst, u_src, len) — copie safe avec vérification
+        ☐ copy_to_user(u_dst, k_src, len) — copie safe avec vérification
+        NOTE: Sans ça un programme user peut lire/écrire la mémoire kernel via syscall
+    ☐ sys_write(fd, buf, len) → vfs_write sur le fd du processus courant
+    ☐ sys_read(fd, buf, len) → vfs_read (bloquant sur fd 0)
+    ☐ sys_exit(code) — process_exit, libère tout, schedule()
+    ☐ sys_open(path, flags) → vfs_open, alloue un fd
+    ☐ sys_close(fd)
+    ☐ sys_getpid()
+    ☐ sys_fork() — duplique process_t + espace d'adressage + fds
+    ☐ sys_exec(path) — charge un nouvel ELF dans l'espace courant
+
+  Gestion des processus:
+    ☐ process_create(elf_data, size) — crée process_t, charge ELF, ajoute au scheduler
+    ☐ process_exit(code) — libère espace d'adressage, fds, threads, notifie parent
+    ☐ process_wait(pid) — bloque le thread courant jusqu'à ZOMBIE du fils
+    ☐ Objectif : 2 processus ELF tournent en ring 3, affichent du texte alternativement
+
+  IPC — Pipes & signaux:
+    ☐ Pipes anonymes
+        ☐ pipe_t {buffer[4096], read_pos, write_pos, readers, writers, lock}
+        ☐ sys_pipe(fds[2]) — crée fd lecture + fd écriture
+        ☐ read bloquant si vide (yield), write bloquant si plein
+        ☐ Héritage lors de fork()
+        ☐ Objectif : cmd1 | cmd2 dans le shell
+    ☐ Signaux
+        ☐ SIGKILL, SIGSEGV, SIGTERM, SIGCHLD
+        ☐ signal_send(pid, sig)
+        ☐ Livraison au retour d'un syscall ou d'une interruption
+        ☐ SIGKILL → process_exit forcé
+        ☐ SIGSEGV → message + process_exit (pas de crash kernel)
+        ☐ Objectif : Ctrl+C tue le processus foreground proprement
+
+  Commande exec dans le shell:
+    ☐ exec [fichier.elf] — charge en ring 3 depuis le VFS, attend la fin
+    ☐ Objectif : "exec /disk/hello.elf" → tourne, revient au shell proprement
 
 
-  Mini libc:
-    ☐ Implémenter string.h
-      ☐ strlen(const char *s)
-      ☐ strcpy(char *dst, const char *src)
-      ☐ strncpy(char *dst, const char *src, size_t n)
-      ☐ strcmp(const char *a, const char *b)
-      ☐ strncmp(const char *a, const char *b, size_t n)
-      ☐ strcat(char *dst, const char *src)
-      ☐ strchr(const char *s, int c)
-      ☐ strstr(const char *haystack, const char *needle)
-      ☐ Objectif : tester chaque fonction avec des cas simples, comparer avec le comportement libc standard
-    ☐ Implémenter memory (string.h)
-      ☐ memcpy(void *dst, const void *src, size_t n)
-      ☐ memset(void *dst, int c, size_t n)
-      ☐ memmove(void *dst, const void *src, size_t n)
-      ☐ memcmp(const void *a, const void *b, size_t n)
-      ☐ Objectif : copier un buffer, le comparer, le remettre à zéro sans corruption mémoire
-    ☐ Implémenter ctype.h
-      ☐ isdigit(int c)
-      ☐ isalpha(int c)
-      ☐ isalnum(int c)
-      ☐ isspace(int c)
-      ☐ isupper(int c)
-      ☐ islower(int c)
-      ☐ toupper(int c)
-      ☐ tolower(int c)
-      ☐ Objectif : le lexer de NPL compile et tokenize une expression simple sans erreur
-    ☐ Implémenter stdlib.h
-      ☐ malloc(size_t size) — wrapper de kmalloc
-      ☐ free(void *ptr) — wrapper de kfree
-      ☐ realloc(void *ptr, size_t size)
-      ☐ atoi(const char *s)
-      ☐ itoa(int n, char *buf, int base)
-      ☐ exit(int code) — halt le kernel proprement
-      ☐ abort() — panic kernel
-      ☐ Objectif : allouer une string avec malloc, écrire dedans, la réallouer, libérer sans crash
-    ☐ Implémenter stdio.h (minimal)
-      ☐ printf(const char *fmt, ...) — %d, %s, %x, %c, %u minimum
-      ☐ putchar(int c)
-      ☐ puts(const char *s)
-      ☐ sprintf(char *buf, const char *fmt, ...)
-      ☐ Pas de fopen / fread / fwrite (pas de filesystem)
-      ☐ Objectif : printf("valeur = %d, hex = %x\n", 42, 255) affiche "valeur = 42, hex = ff"
-    ☐ Supprimer / remplacer les appels fichiers de read_file.c
-      ☐ Remplacer fopen / fread par une lecture depuis un buffer mémoire
-      ☐ Objectif : read_file.c compile sans erreur sans libc standard
-    ☐ Tester la mini libc complète
-      ☐ Compiler les sources de NPL avec la mini libc uniquement (sans libc standard)
-      ☐ Objectif : tous les fichiers de NPL compilent sans erreur ni warning
+  ══════════════════════════════════════════════════════════════════
+  PHASE 8 — BUS PCI & DEVICE MODEL
+  ══════════════════════════════════════════════════════════════════
+  NOTE SUR L'ARCHITECTURE DU DEVICE MODEL :
+  Sans device model, chaque driver scanne le PCI lui-même → spaghetti.
+  Architecture correcte (inspirée de Linux) :
+
+    bus_type_t (PCI, USB, platform...)
+      ↓ scan + device_register()
+    device_t (représente le hardware : vendor, device_id, BARs, IRQ)
+      ↓ bus_match_and_probe()
+    driver_t (probe / remove — s'enregistre avec driver_register())
+      ↓ association réussie
+    device_class_t (INPUT, BLOCK, CHAR, NET, GPU...)
+
+  Résultat : ajouter un driver = une fonction probe() + driver_register().
+  Zéro modification du bus manager. Exactement comme Linux.
+
+  Structures du Device Model:
+    ☐ device_t
+        ☐ name[64], bus_type (BUS_PCI / BUS_USB / BUS_PLATFORM)
+        ☐ void *bus_data — pci_device_t* ou usb_device_t* selon le bus
+        ☐ driver_t *driver — driver attaché (NULL si non reconnu)
+        ☐ device_t *parent — hiérarchie (device USB → parent = controller)
+        ☐ device_class_t class (CLASS_INPUT, CLASS_BLOCK, CLASS_GPU...)
+        ☐ Liste chaînée des enfants
+    ☐ driver_t
+        ☐ name[64], bus_type
+        ☐ int (*probe)(device_t *dev) — retourne 0 si succès, -1 sinon
+        ☐ void (*remove)(device_t *dev)
+        ☐ const device_id_t *id_table — {vendor_id, device_id} terminé par {0,0}
+    ☐ bus_type_t
+        ☐ int (*match)(device_t*, driver_t*) — teste la compatibilité
+        ☐ int (*probe)(device_t*) — appelle drv->probe après match
+        ☐ Liste devices, liste drivers
+    ☐ device_class_t
+        ☐ CLASS_INPUT, CLASS_BLOCK, CLASS_CHAR, CLASS_NET, CLASS_GPU
+        ☐ Permet d'itérer tous les devices d'un type sans connaître le bus
+
+  Driver Registry:
+    ☐ driver_register(driver_t*) — ajoute à la registry, tente probe sur devices existants
+    ☐ driver_unregister(driver_t*)
+    ☐ device_register(device_t*) — enregistre, déclenche bus_match_and_probe()
+    ☐ device_unregister(device_t*) — appelle remove(), libère
+    ☐ bus_match_and_probe(device_t*) — parcourt les drivers, appelle match() puis probe()
+    ☐ Objectif : enregistrer un device PCI → le bon driver est appelé automatiquement
+
+  Bus PCI — Énumération:
+    ☐ pci_device_t {bus, slot, func, vendor_id, device_id, class_code, subclass, prog_if, bars[6], irq}
+    ☐ pci_read_config_dword(bus, slot, func, offset) via 0xCF8 / 0xCFC
+    ☐ pci_write_config_dword(...)
+    ☐ Scanner tous les bus/slot/func (255 × 32 × 8)
+    ☐ Lire les 6 BARs — distinguer MMIO vs I/O, calculer taille (write all-ones, read back)
+    ☐ Créer un device_t pour chaque device trouvé, appeler device_register()
+    ☐ Afficher : bus, slot, vendor, device_id, class, nom lisible si connu
+    ☐ Objectif : tous les devices PCI listés au boot, chaque driver matché automatiquement
+
+  Pattern d'enregistrement d'un driver (à suivre pour tous les drivers suivants):
+    ☐ Définir static const device_id_t my_ids[] = {{VENDOR, DEVICE}, {0,0}};
+    ☐ Définir static driver_t my_driver = {.name="x", .bus_type=BUS_PCI,
+          .probe=my_probe, .remove=my_remove, .id_table=my_ids};
+    ☐ Appeler driver_register(&my_driver) dans l'init kernel
+    ☐ Objectif : ajouter un driver = zéro modification du bus manager
 
 
-  Terminal / Shell (mode texte):
-    ☐ Écrire la boucle principale du shell (REPL)
-      ☐ Boucle infinie : affiche prompt → lit ligne → exécute → recommence
-      ☐ Objectif : la boucle tourne sans crash, même si la commande est vide
-    ☐ Implémenter readline()
-      ☐ Lire caractère par caractère depuis get_key() de l'input layer
-      ☐ Stocker dans un buffer jusqu'au \n
-      ☐ Gérer backspace (effacer le dernier caractère à l'écran et dans le buffer)
-      ☐ Gérer la limite de taille du buffer (ex: 256 chars max)
-      ☐ Objectif : taper "hello world" avec des backspaces, valider, récupérer la string correcte
-    ☐ Gérer les flèches directionnelles
-      ☐ Détecter les events INPUT_KEY KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN
-      ☐ Flèche gauche / droite — déplacer le curseur dans la ligne
-      ☐ Insérer / supprimer un caractère au milieu de la ligne
-      ☐ Objectif : se déplacer dans une ligne tapée et modifier un caractère au milieu
-    ☐ Afficher un prompt personnalisé
-      ☐ Afficher "Nathan OS > " en couleur avant chaque saisie
-      ☐ Repositionner le curseur après le prompt
-      ☐ Objectif : le prompt réapparaît proprement après chaque commande
-    ☐ Gérer l'historique de commandes
-      ☐ Stocker les dernières commandes dans un tableau circulaire (ex: 50 entrées)
-      ☐ Flèche haut — commande précédente
-      ☐ Flèche bas — commande suivante
-      ☐ Objectif : naviguer dans l'historique et réexécuter une ancienne commande
-    ☐ Implémenter le parsing de commandes
-      ☐ Séparer la commande et ses arguments (split sur les espaces)
-      ☐ Identifier le nom de la commande (premier token)
-      ☐ Objectif : parser "echo hello world" → commande="echo", args=["hello", "world"]
-    ☐ Implémenter les commandes basiques
-      ☐ help — affiche la liste des commandes disponibles
-      ☐ clear — efface l'écran et repositionne le curseur en haut
-      ☐ echo [texte] — affiche le texte
-      ☐ mem — affiche la RAM totale et la mémoire heap utilisée
-      ☐ reboot — redémarre la machine (via le port 0x64)
-      ☐ ls [chemin] — liste un répertoire VFS
-      ☐ cat [fichier] — affiche le contenu d'un fichier VFS
-      ☐ exec [fichier.elf] — charge et exécute un ELF depuis le VFS
-      ☐ Objectif : toutes les commandes s'exécutent sans crash
-    ☐ Implémenter le mode REPL pour NPL
-      ☐ La commande "npl" lance l'interpréteur en mode interactif
-      ☐ Afficher un prompt secondaire "npl > "
-      ☐ Chaque ligne est passée directement au lexer/parser/interpréteur
-      ☐ Le résultat s'affiche sur la ligne suivante
-      ☐ La commande "exit" ou Ctrl+C quitte le mode NPL et retourne au shell
-      ☐ Objectif : taper "npl", puis "1 + 1", voir "2" s'afficher
+  ══════════════════════════════════════════════════════════════════
+  PHASE 9 — DRIVERS USB
+  ══════════════════════════════════════════════════════════════════
+  NOTE SUR L'ORDRE UHCI → EHCI → xHCI :
+  UHCI est le plus simple (PIO, pas de MMIO, bien documenté, QEMU le supporte).
+  EHCI est plus complexe mais nécessaire pour USB 2.0 sur vrai hardware.
+  xHCI (USB 3.x) est le plus complexe — Command Ring, Event Ring, TRBs.
+  Ne jamais commencer par xHCI. Valider UHCI entièrement avant de toucher EHCI.
+
+  Architecture HCD — Host Controller Driver (abstraction générique):
+    ☐ hcd_ops_t {init, submit_transfer, reset_port, poll, get_port_status}
+    ☐ usb_transfer_t {type, endpoint, data, length, callback, status}
+    ☐ usb_bus_type — bus_type_t dédié à l'USB
+    ☐ Objectif : UHCI, EHCI et xHCI implémentent tous hcd_ops_t
+
+  UHCI (USB 1.1 — commencer par là):
+    ☐ Driver PCI (class 0x0C, subclass 0x03, prog-if 0x00), enregistré via driver_register
+    ☐ probe() : lire BAR I/O, reset controller, initialiser FRNUM + FLBASEADDR
+    ☐ Frame List (1024 entrées, alignée 4Ko — alloc_frame())
+    ☐ Transfer Descriptors (TD) et Queue Heads (QH) en mémoire physique connue
+    ☐ Transfert Control : SETUP + DATA + STATUS
+    ☐ Transfert Interrupt : polling périodique via la Frame List
+    ☐ Objectif : GET_DESCRIPTOR à l'adresse 0 → Device Descriptor récupéré
+
+  EHCI (USB 2.0 — après UHCI validé):
+    ☐ Driver PCI (prog-if 0x20), enregistré via driver_register
+    ☐ probe() : mapper BAR MMIO via vmm_map_page()
+    ☐ Parser Capability Registers (CAPLENGTH, HCIVERSION, HCSPARAMS, HCCPARAMS)
+    ☐ Init : USBCMD reset, USBINTR, PERIODICLISTBASE, ASYNCLISTADDR
+    ☐ Queue Heads (QH) et Transfer Descriptors (qTD)
+    ☐ Transferts Control et Bulk
+    ☐ Hand-off EHCI → UHCI/OHCI pour les devices USB 1.1
+    ☐ Objectif : détecter + initialiser un device USB 2.0
+
+  xHCI (USB 3.x — en dernier):
+    ☐ Driver PCI (prog-if 0x30), enregistré via driver_register
+    ☐ probe() : mapper BAR MMIO
+    ☐ Parser Capability Registers
+    ☐ Init : reset, DCBAAP, Command Ring, Event Ring (ERST)
+    ☐ Transfer Request Blocks (TRB) : Normal, Setup Stage, Data Stage, Status Stage
+    ☐ Command TRBs : Enable Slot, Address Device, Configure Endpoint
+    ☐ Transferts Control, Bulk et Interrupt
+    ☐ Objectif : device USB 3.x détecté, descripteur affiché
+
+  Énumération USB générique (UHCI + EHCI + xHCI):
+    ☐ usb_enumerate_device(hcd, port)
+        ☐ GET_DESCRIPTOR (Device Descriptor) à l'adresse 0
+        ☐ SET_ADDRESS → assigner une adresse unique
+        ☐ GET_DESCRIPTOR complet (Device + Configuration + Interface + Endpoint)
+        ☐ Identifier la classe : HID 0x03, Mass Storage 0x08
+        ☐ Créer un device_t USB, appeler device_register() → match automatique
+    ☐ Objectif : brancher un clavier USB → "HID clavier détecté" à l'écran
+
+  Driver HID clavier USB:
+    ☐ Driver USB (class HID 0x03, usage keyboard), enregistré via driver_register
+    ☐ probe() : SET_CONFIGURATION, SET_IDLE, GET_REPORT_DESCRIPTOR
+    ☐ Transfert Interrupt périodique sur l'endpoint IN
+    ☐ Parser les HID reports : modifier keys (Shift/Ctrl/Alt) + keycodes[6]
+    ☐ Convertir HID keycode → input_event, pousher dans le ring buffer
+    ☐ Remplace le driver PS/2 de façon transparente (même ring buffer)
+    ☐ Objectif : touche USB → caractère dans le shell, identique au PS/2
+
+  Driver HID souris USB:
+    ☐ Driver USB (class HID 0x03, usage mouse), enregistré via driver_register
+    ☐ probe() : transfert Interrupt sur l'endpoint IN
+    ☐ Parser HID reports : boutons + delta X/Y + scroll
+    ☐ Pousher INPUT_MOUSE_MOVE / INPUT_MOUSE_BUTTON dans le ring buffer
+    ☐ Objectif : mouvement souris → coordonnées X/Y changent
+
+  Keymap complète (Input Layer):
+    ☐ Table HID keycode → ASCII AZERTY
+    ☐ Shift, Caps Lock, AltGr, touches mortes (accents)
+    ☐ Objectif : session de frappe complète sans caractère erroné
 
 
-  Système graphique (GUI):
-    ☐ Framebuffer — affichage pixel par pixel
-      ☐ Détecter le framebuffer via Multiboot (multiboot_info_t → framebuffer_addr / width / height / bpp)
-        ☐ Vérifier que GRUB a passé un framebuffer (flag MULTIBOOT_INFO_FRAMEBUFFER_INFO)
-        ☐ Lire : fb_addr, fb_width, fb_height, fb_pitch, fb_bpp
-        ☐ Objectif : afficher les infos framebuffer au démarrage (ex: "1024x768 32bpp")
-      ☐ Mapper le framebuffer dans l'espace virtuel kernel
-        ☐ Ajouter les pages du framebuffer dans le page directory (identity map ou map en haute mémoire)
-        ☐ Objectif : écrire un pixel à fb_addr et voir le changement à l'écran
-      ☐ Implémenter les primitives de dessin
-        ☐ fb_put_pixel(x, y, color) — écriture directe dans le framebuffer
-        ☐ fb_fill_rect(x, y, w, h, color) — rectangle plein
-        ☐ fb_draw_rect(x, y, w, h, color) — rectangle vide (contour)
-        ☐ fb_draw_line(x0, y0, x1, y1, color) — ligne (algorithme de Bresenham)
-        ☐ Objectif : afficher un rectangle rouge et une ligne diagonale à l'écran
-      ☐ Implémenter le double buffering
-        ☐ Allouer un back buffer en mémoire (même taille que le framebuffer)
-        ☐ Toutes les opérations de dessin se font dans le back buffer
-        ☐ fb_swap() — copie le back buffer vers le framebuffer réel (memcpy)
-        ☐ Objectif : animer un rectangle qui se déplace sans flickering
+  ══════════════════════════════════════════════════════════════════
+  PHASE 10 — COUCHE GRAPHIQUE
+  ══════════════════════════════════════════════════════════════════
+  NOTE SUR L'ORDRE DES COUCHES GRAPHIQUES :
+  Un GPU driver sans couche d'abstraction ne sert à rien.
+  L'ordre correct est :
 
-    ☐ Rendu texte graphique (font bitmap)
-      ☐ Intégrer une police bitmap (ex: font PSF 8x16 — linux console font, libre de droits)
-        ☐ Parser le header PSF (magic, version, taille glyphe, nombre de glyphes)
-        ☐ Stocker la font dans un tableau statique dans le kernel
-        ☐ Objectif : avoir une font 8x16 utilisable, afficher le glyphe 'A' brut
-      ☐ Implémenter fb_draw_char(x, y, c, fg_color, bg_color)
-        ☐ Récupérer le glyphe correspondant au caractère dans la table font
-        ☐ Pour chaque bit du glyphe : dessiner un pixel fg ou bg
-        ☐ Objectif : afficher "A" en blanc sur fond noir aux coordonnées (100, 100)
-      ☐ Implémenter fb_draw_string(x, y, str, fg, bg)
-        ☐ Boucle sur les caractères, appel fb_draw_char, avancer x de font_width
-        ☐ Gérer \n (retour à la ligne)
-        ☐ Objectif : afficher "Nathan OS" en grand à l'écran en mode graphique
+    1. Framebuffer abstrait (gfx_surface_t) — indépendant du hardware
+    2. Backend framebuffer linéaire (VESA/BIOS) — le plus simple
+    3. Primitives de dessin (dessus du framebuffer)
+    4. Double buffering (dessus des primitives)
+    5. WM + widgets (dessus du double buffering)
+    6. Backend GPU accéléré (optionnel, remplace le backend VESA)
 
-    ☐ Curseur souris graphique
-      ☐ Dessiner un curseur (sprite 12x20 pixels, flèche simple)
-        ☐ Stocker le sprite dans un tableau statique
-        ☐ Sauvegarder les pixels sous le curseur avant de le dessiner
-        ☐ Restaurer les pixels sauvegardés avant de déplacer le curseur
-        ☐ Objectif : bouger la souris, voir le curseur se déplacer sans laisser de traces
-      ☐ Connecter le curseur à l'input layer
-        ☐ À chaque INPUT_MOUSE_MOVE : effacer l'ancien curseur, mettre à jour (x,y), dessiner le nouveau
-        ☐ Clamp les coordonnées dans les bornes [0, width-1] × [0, height-1]
-        ☐ Objectif : bouger la souris sur tout l'écran, curseur fluide
+  Couche gfx — surface abstraite:
+    ☐ gfx_surface_t {pixels, width, height, pitch, bpp, format}
+    ☐ gfx_create_surface(w, h) — alloue un back buffer via kmalloc
+    ☐ gfx_destroy_surface(s)
+    ☐ gfx_blit(dst, src, x, y) — copier une surface dans une autre
+    ☐ Objectif : toutes les primitives travaillent sur gfx_surface_t,
+      pas directement sur le framebuffer hardware
 
-    ☐ Gestionnaire de fenêtres (Window Manager)
-      ☐ Définir la structure window_t
-        ☐ Champs : id, x, y, width, height, title, back_buffer, visible, focused
-        ☐ Liste chaînée des fenêtres (ordre Z — dernière = au dessus)
-        ☐ Objectif : créer une fenêtre en mémoire sans encore l'afficher
-      ☐ Implémenter wm_create_window(x, y, w, h, title)
-        ☐ Allouer le back buffer de la fenêtre (w * h * bpp octets)
-        ☐ Ajouter la fenêtre à la liste du WM
-        ☐ Objectif : créer 3 fenêtres, vérifier qu'elles sont dans la liste
-      ☐ Implémenter le rendu des fenêtres
-        ☐ wm_draw_window(win) — dessine la décoration (barre de titre, bordure)
-        ☐ Barre de titre : rectangle coloré (couleur différente si focused), nom de la fenêtre
-        ☐ Bouton de fermeture : carré rouge en haut à droite
-        ☐ Corps de la fenêtre : copier le back buffer de la fenêtre dans le framebuffer
-        ☐ Objectif : afficher une fenêtre avec barre de titre et bordure
-      ☐ Implémenter wm_render() — rendu complet de la scène
-        ☐ Effacer le back buffer global (couleur de fond du bureau)
-        ☐ Dessiner les fenêtres de bas en haut (ordre Z)
-        ☐ Dessiner le curseur souris par dessus tout
-        ☐ fb_swap() — afficher le résultat
-        ☐ Objectif : plusieurs fenêtres superposées, affichées dans le bon ordre Z
-      ☐ Implémenter le déplacement de fenêtres (drag)
-        ☐ Sur clic gauche dans la barre de titre : marquer la fenêtre comme "draggée"
-        ☐ Sur INPUT_MOUSE_MOVE pendant le drag : déplacer la fenêtre (x += dx, y += dy)
-        ☐ Sur relâchement clic gauche : stopper le drag
-        ☐ Objectif : cliquer sur une barre de titre et déplacer la fenêtre à la souris
-      ☐ Implémenter le focus
-        ☐ Sur clic dans une fenêtre : la passer au premier plan (fin de liste = dessus)
-        ☐ Marquer la fenêtre comme focused (barre de titre couleur active)
-        ☐ Les événements clavier sont envoyés uniquement à la fenêtre focused
-        ☐ Objectif : cliquer sur une fenêtre en arrière-plan, elle passe au premier plan
-      ☐ Implémenter la fermeture de fenêtres
-        ☐ Clic sur le bouton rouge : appeler wm_close_window(win)
-        ☐ Libérer le back buffer, retirer de la liste
-        ☐ Objectif : fermer une fenêtre, elle disparaît et la mémoire est libérée
+  Backend framebuffer linéaire (VESA BIOS / bootloader):
+    ☐ Détecter via structure passée par le bootloader (fb_addr, width, height, pitch, bpp)
+    ☐ Mapper les pages du framebuffer via vmm_map_page()
+    ☐ gfx_screen — gfx_surface_t pointant sur le framebuffer réel
+    ☐ Objectif : écrire un pixel dans gfx_screen → visible à l'écran
 
-    ☐ Système d'événements GUI
-      ☐ Définir gui_event_t { type, window_id, x, y, key, button }
-        ☐ Types : GUI_EVENT_MOUSE_MOVE, GUI_EVENT_MOUSE_DOWN, GUI_EVENT_MOUSE_UP, GUI_EVENT_KEY_DOWN, GUI_EVENT_KEY_UP, GUI_EVENT_CLOSE
-        ☐ Objectif : structure unifiée pour tous les événements GUI
-      ☐ Implémenter wm_dispatch_events()
-        ☐ Consommer les input_event de l'input layer
-        ☐ Convertir en gui_event_t (calculer dans quelle fenêtre est la souris)
-        ☐ Ajouter dans la file d'événements de la fenêtre concernée
-        ☐ Objectif : cliquer dans une fenêtre, elle reçoit GUI_EVENT_MOUSE_DOWN avec les bonnes coordonnées relatives
-      ☐ Implémenter la boucle principale GUI
-        ☐ Boucle infinie : wm_dispatch_events() → chaque app traite ses événements → wm_render()
-        ☐ Ajouter un sleep/yield pour ne pas saturer le CPU
-        ☐ Objectif : la boucle GUI tourne à 60Hz sans saturer le CPU
+  Primitives de dessin (sur gfx_surface_t):
+    ☐ gfx_put_pixel(s, x, y, color)
+    ☐ gfx_fill_rect(s, x, y, w, h, color)
+    ☐ gfx_draw_rect(s, x, y, w, h, color)
+    ☐ gfx_draw_line(s, x0, y0, x1, y1, color) — Bresenham
+    ☐ gfx_blit_alpha(dst, src, x, y) — copie avec canal alpha (pour les fenêtres)
+    ☐ Objectif : rectangle + ligne + blit fonctionnels sur une surface
 
-    ☐ Widgets de base
-      ☐ Widget label : afficher du texte dans une fenêtre
-        ☐ label_t { x, y, text, fg_color, bg_color }
-        ☐ widget_draw_label(win, label) — dessine le texte dans le back buffer de la fenêtre
-        ☐ Objectif : afficher "Hello GUI!" dans une fenêtre
-      ☐ Widget bouton : zone cliquable avec texte
-        ☐ button_t { x, y, w, h, label, pressed, callback }
-        ☐ widget_draw_button(win, btn) — fond gris, texte centré, relief si pressé
-        ☐ Gérer GUI_EVENT_MOUSE_DOWN dans la zone du bouton → appeler callback
-        ☐ Objectif : cliquer sur un bouton "OK", voir un message s'afficher
-      ☐ Widget zone de texte (input field)
-        ☐ textfield_t { x, y, w, buf, cursor_pos, focused }
-        ☐ widget_draw_textfield(win, tf) — rectangle blanc, texte, curseur clignotant
-        ☐ Recevoir les GUI_EVENT_KEY_DOWN → insérer / effacer dans le buffer
-        ☐ Objectif : cliquer dans la zone, taper du texte, le voir s'afficher avec curseur
+  Rendu texte (font PSF):
+    ☐ Parser font PSF 8x16 (linux console font, libre de droits)
+    ☐ gfx_draw_char(s, x, y, c, fg, bg)
+    ☐ gfx_draw_string(s, x, y, str, fg, bg) — gérer \n
+    ☐ Objectif : "Nathan OS" affiché en mode graphique
+
+  Double buffering:
+    ☐ back_buffer — gfx_surface_t allouée en mémoire
+    ☐ Toutes les opérations de rendu → back_buffer
+    ☐ gfx_flip() — gfx_blit(gfx_screen, back_buffer, 0, 0)
+    ☐ Objectif : animation sans flickering
+
+  Curseur souris:
+    ☐ Sprite 12x20 pixels (flèche simple, stocké statiquement)
+    ☐ Sauvegarder / restaurer les pixels sous le sprite
+    ☐ À chaque INPUT_MOUSE_MOVE : restore, mettre à jour pos, draw
+    ☐ Clamp [0, width-1] × [0, height-1]
+    ☐ Objectif : curseur fluide, pas de trace à l'écran
+
+  Window Manager:
+    ☐ window_t {id, x, y, w, h, title, surface, visible, focused, zorder}
+    ☐ Liste triée par z-order (z le plus bas = dessiné en premier)
+    ☐ wm_create_window(x, y, w, h, title) — gfx_create_surface + ajout liste
+    ☐ wm_destroy_window(id) — gfx_destroy_surface, retirer liste
+    ☐ wm_render()
+        ☐ Effacer le back_buffer global (couleur bureau)
+        ☐ Pour chaque window (ordre z croissant) :
+            ☐ Dessiner décoration (barre titre, bordure, bouton fermeture)
+            ☐ gfx_blit(back_buffer, window->surface, window->x, window->y)
+        ☐ Dessiner curseur souris par dessus tout
+        ☐ gfx_flip()
+    ☐ Drag : clic dans barre titre → activer drag, MOUSE_MOVE → x+=dx, y+=dy
+    ☐ Focus : clic dans window → z-order max, barre titre couleur active
+    ☐ Fermeture : clic bouton rouge → wm_destroy_window
+
+  Système d'événements GUI:
+    ☐ gui_event_t {type, window_id, x, y, key, button}
+    ☐ wm_dispatch_events() — convertit input_event → gui_event, l'envoie à la bonne window
+    ☐ Boucle principale GUI : wm_dispatch_events() → apps → wm_render() à 60Hz
+
+  Widgets:
+    ☐ widget_label_t : texte dans une window
+    ☐ widget_button_t : zone cliquable, texte centré, callback
+    ☐ widget_textfield_t : saisie texte, curseur clignotant, KEY_DOWN → insert/delete
 
 
-  Applications:
-    ☐ Terminal graphique
-      ☐ Ouvrir une fenêtre WM pour le terminal (ex: 640x400)
-        ☐ Fond noir, police monospace (font PSF)
-        ☐ Gérer un buffer de lignes (ex: 80x25 caractères)
-        ☐ Objectif : fenêtre noire vide avec le prompt "Nathan OS >"
-      ☐ Connecter readline au terminal graphique
-        ☐ Les touches reçues via GUI_EVENT_KEY_DOWN → même logique que readline texte
-        ☐ Afficher les caractères dans la fenêtre (fb_draw_char dans le back buffer)
-        ☐ Objectif : taper dans le terminal graphique, voir les caractères s'afficher
-      ☐ Implémenter le scroll du terminal graphique
-        ☐ Quand la dernière ligne est atteinte, décaler les lignes vers le haut
-        ☐ Objectif : dépasser 25 lignes, le terminal défile proprement
-      ☐ Brancher le shell au terminal graphique
-        ☐ Le shell utilise le terminal graphique comme entrée/sortie
-        ☐ Les commandes s'exécutent et leur sortie s'affiche dans la fenêtre
-        ☐ Objectif : taper "echo hello" dans le terminal graphique, voir "hello" s'afficher
+  ══════════════════════════════════════════════════════════════════
+  PHASE 11 — INTÉGRATION NPL
+  ══════════════════════════════════════════════════════════════════
 
-    ☐ Gestionnaire de fichiers
-      ☐ Ouvrir une fenêtre WM pour le file manager
-        ☐ Fond blanc, liste des fichiers sous forme d'icônes ou de liste
-        ☐ Objectif : fenêtre vide ouverte
-      ☐ Lister le répertoire courant (via VFS)
-        ☐ Appeler vfs_readdir(path) et récupérer les entrées
-        ☐ Afficher les entrées (nom, taille, type dossier/fichier) sous forme de liste
-        ☐ Objectif : afficher le contenu de "/" dans la fenêtre
-      ☐ Navigation dans les répertoires
-        ☐ Double-clic sur un dossier → entrer dans ce dossier, relire le répertoire
-        ☐ Bouton "Parent" → remonter d'un niveau
-        ☐ Afficher le chemin courant dans la barre de titre
-        ☐ Objectif : naviguer dans l'arborescence de fichiers à la souris
-      ☐ Ouvrir un fichier
-        ☐ Double-clic sur un fichier .npl → ouvrir dans l'interpréteur NPL
-        ☐ Double-clic sur un fichier .elf → lancer l'exécutable
-        ☐ Double-clic sur un fichier texte → ouvrir dans un éditeur minimal
-        ☐ Objectif : double-cliquer sur un .npl, voir son exécution dans le terminal graphique
-
-    ☐ Barre de tâches / Dock
-      ☐ Dessiner une barre en bas de l'écran (hauteur 32px, fond sombre)
-        ☐ Toujours dessinée par dessus les fenêtres (Z le plus haut sauf curseur)
-        ☐ Objectif : barre noire permanente en bas de l'écran
-      ☐ Afficher les fenêtres ouvertes comme boutons dans la barre
-        ☐ Pour chaque fenêtre : afficher son titre comme un bouton
-        ☐ Clic sur le bouton → mettre la fenêtre au premier plan (focus)
-        ☐ Objectif : voir les fenêtres ouvertes listées dans la barre, cliquer pour focus
-      ☐ Boutons de lancement rapide
-        ☐ Icône terminal → lancer le terminal graphique
-        ☐ Icône file manager → lancer le gestionnaire de fichiers
-        ☐ Icône REPL NPL → lancer l'interpréteur NPL
-        ☐ Objectif : cliquer sur une icône, l'application s'ouvre
-
-
-  Expérience de premier démarrage (OOBE):
-    ☐ Écran de bienvenue
-      ☐ Afficher "Bienvenue dans Nathan OS" en grand
-      ☐ Logo / ASCII art de l'OS
-      ☐ Bouton "Commencer" pour passer à l'étape suivante
-      ☐ Objectif : au premier boot, l'écran d'accueil s'affiche
-    ☐ Sélection de la langue
-      ☐ Proposer une liste de langues (FR, EN minimum)
-      ☐ Changer la keymap selon la langue choisie
-      ☐ Objectif : choisir "FR", taper 'A' → obtenir 'a' en AZERTY
-    ☐ Configuration du nom d'utilisateur
-      ☐ Champ texte pour entrer un nom d'utilisateur
-      ☐ Valider et stocker dans la config (ex: fichier /config/user.cfg en RamFS)
-      ☐ Objectif : entrer "Nathan", le prompt devient "Nathan >"
-    ☐ Résumé et finalisation
-      ☐ Afficher les choix effectués (langue, nom)
-      ☐ Bouton "Terminer" → lancer l'environnement principal (bureau + barre de tâches)
-      ☐ Marquer l'OOBE comme complétée (flag en RamFS ou en mémoire)
-      ☐ Objectif : après l'OOBE, le bureau s'affiche avec la barre de tâches
-
-
-  Intégration du langage (NPL):
-    ☐ Préparer les sources NPL pour le portage
-      ☐ Copier les sources dans le dossier lang/ du projet OS
-      ☐ Lister toutes les fonctions libc utilisées dans chaque fichier
-      ☐ Identifier les fonctionnalités qui dépendent du système hôte (fichiers, stdin, stdout)
-      ☐ Objectif : avoir une liste claire de tout ce qui doit être remplacé
+  Portage NPL:
+    ☐ Copier les sources dans lang/
+    ☐ Lister toutes les fonctions libc utilisées
     ☐ Remplacer les includes libc
-      ☐ Remplacer #include <stdio.h> par #include "../lib/stdio.h"
-      ☐ Remplacer #include <stdlib.h> par #include "../lib/stdlib.h"
-      ☐ Remplacer #include <string.h> par #include "../lib/string.h"
-      ☐ Remplacer #include <ctype.h> par #include "../lib/ctype.h"
-      ☐ Objectif : tous les fichiers NPL compilent avec la mini libc sans toucher au code métier
-    ☐ Adapter les entrées / sorties
-      ☐ Remplacer printf() par le printk() du kernel (normalement transparent si mini libc bien faite)
-      ☐ Remplacer scanf() / fgets() par readline() du terminal
-      ☐ Adapter read_file.c pour lire depuis le VFS (vfs_open / vfs_read)
-      ☐ Objectif : NPL peut lire une string en mémoire et afficher un résultat à l'écran
-    ☐ Exposer une API d'entrée pour le shell
-      ☐ Écrire npl_exec_line(const char *line) — exécute une ligne de code NPL
-      ☐ Écrire npl_exec_buffer(const char *buf, size_t len) — exécute un bloc de code
-      ☐ Écrire npl_init() — initialise l'état de l'interpréteur
-      ☐ Écrire npl_reset() — remet l'interpréteur à zéro
-      ☐ Objectif : appeler npl_exec_line("1 + 1") depuis kmain et voir "2" s'afficher
-    ☐ Brancher NPL dans le shell
-      ☐ La commande "npl" appelle npl_init() puis lance la boucle REPL NPL
-      ☐ Chaque ligne tapée est passée à npl_exec_line()
-      ☐ Les erreurs de syntaxe / runtime s'affichent proprement sans crasher le shell
-      ☐ "exit" appelle npl_reset() et retourne au prompt principal
-      ☐ Objectif : session NPL complète depuis le shell, retour propre au shell après exit
-    ☐ Tester les fonctionnalités de NPL
-      ☐ Tester les expressions arithmétiques (1 + 1, 10 * 3, etc.)
-      ☐ Tester les variables (x = 5, y = x + 1, etc.)
-      ☐ Tester les structures de contrôle (if, while, for)
-      ☐ Tester les fonctions (définition + appel)
-      ☐ Tester les strings
-      ☐ Objectif : un programme NPL non trivial s'exécute correctement dans l'OS
-    ☐ Gérer les erreurs robustement
-      ☐ Une erreur de syntaxe affiche un message clair et ne crashe pas le shell
-      ☐ Une erreur runtime (division par zéro, variable inexistante) affiche un message et continue
-      ☐ Une fuite mémoire dans l'interpréteur ne fait pas planter le heap kernel
-      ☐ Objectif : provoquer volontairement 10 erreurs différentes, le shell survit à toutes
-    ☐ Exécuter des scripts NPL depuis le VFS
-      ☐ La commande "npl [fichier.npl]" lit le fichier via VFS et l'exécute
-      ☐ Objectif : écrire hello.npl sur la partition, "npl /hello.npl" l'exécute
+        ☐ <stdio.h>  → ../lib/stdio.h
+        ☐ <stdlib.h> → ../lib/stdlib.h
+        ☐ <string.h> → ../lib/string.h
+        ☐ <ctype.h>  → ../lib/ctype.h
+    ☐ Adapter I/O
+        ☐ printf() → transparent via mini libc
+        ☐ scanf() / fgets() → readline() du terminal
+        ☐ read_file.c → vfs_open / vfs_read
+
+  API NPL:
+    ☐ npl_init(), npl_reset()
+    ☐ npl_exec_line(const char *line)
+    ☐ npl_exec_buffer(const char *buf, size_t len)
+    ☐ Objectif : npl_exec_line("1 + 1") → "2" affiché
+
+  REPL NPL dans le shell:
+    ☐ Commande "npl" → boucle REPL avec prompt "npl > "
+    ☐ Erreurs : message propre, shell survit
+    ☐ "exit" → retour au prompt principal
+
+  Scripts depuis le VFS:
+    ☐ "npl /disk/hello.npl" → lire via VFS, exécuter
+    ☐ Objectif : script NPL non trivial s'exécute correctement
+
+  Tests NPL:
+    ☐ Arithmétique, variables, if/while/for, fonctions, strings
+    ☐ Provoquer 10 erreurs différentes → shell survit à toutes
 
 
-  Tests & Polish:
-    ☐ Tests kernel
-      ☐ Provoquer chaque exception CPU et vérifier le message d'erreur
-      ☐ Allouer toute la RAM disponible et vérifier que kmalloc retourne NULL proprement
-      ☐ Tester le scroll VGA (remplir les 25 lignes et vérifier le défilement)
-      ☐ Tester le timer (vérifier que le compteur de ticks s'incrémente correctement)
-      ☐ Objectif : le kernel survit à tous les cas limites sans triple fault
-    ☐ Tests mémoire
-      ☐ Allouer et libérer 1000 blocs de tailles aléatoires
-      ☐ Vérifier l'absence de fragmentation excessive du heap
-      ☐ Vérifier qu'il n'y a pas de fuite mémoire après une session NPL complète
-      ☐ Objectif : le heap est stable après 10 minutes d'utilisation intensive
-    ☐ Tests terminal texte
-      ☐ Taper 256 caractères d'affilée (limite du buffer readline)
-      ☐ Naviguer dans l'historique sur 50 commandes
-      ☐ Taper des caractères spéciaux (accents, symboles) et vérifier le comportement
-      ☐ Tester clear, help, echo, mem, reboot
-      ☐ Objectif : le terminal est stable et prévisible dans tous les cas
-    ☐ Tests NPL
-      ☐ Exécuter 100 lignes de code NPL d'affilée
-      ☐ Provoquer toutes les erreurs possibles (syntaxe, runtime, mémoire)
-      ☐ Vérifier que le shell survit à une session NPL crashée
-      ☐ Objectif : NPL est stable et les erreurs sont toujours catchées proprement
-    ☐ Tests GUI
-      ☐ Ouvrir et fermer 20 fenêtres d'affilée — vérifier l'absence de fuite mémoire
-      ☐ Déplacer des fenêtres rapidement — vérifier l'absence de glitch graphique
-      ☐ Cliquer partout (barre des tâches, fenêtres, fond) — aucun crash
-      ☐ Tester le terminal graphique avec 500 lignes de sortie — scroll stable
-      ☐ Objectif : le GUI est stable après 10 minutes d'utilisation
-    ☐ Tests USB
-      ☐ Brancher / débrancher un clavier USB et vérifier la détection
-      ☐ Taper rapidement — vérifier qu'aucun caractère n'est perdu
-      ☐ Tester la souris sur toute la surface de l'écran
-      ☐ Objectif : clavier et souris USB stables après 10 minutes
-    ☐ Tests ELF
-      ☐ Compiler un programme ELF "hello world" avec i686-elf-gcc
-      ☐ Le charger via "exec /hello.elf" dans le shell
-      ☐ Provoquer une erreur dans le programme (segfault) et vérifier que le kernel catch l'exception sans planter
-      ☐ Objectif : les programmes ELF s'exécutent et les erreurs sont catchées proprement
-    ☐ Polish visuel
-      ☐ Écrire un écran de démarrage (splash screen) avec le nom de l'OS
-      ☐ Afficher les infos au boot (RAM détectée, version OS, version NPL)
-      ☐ Coloriser le prompt et les messages d'erreur
-      ☐ Écrire un écran de panic stylisé (fond rouge, message blanc)
-      ☐ Objectif : l'OS a une identité visuelle cohérente
-    ☐ Tests sur vrai hardware
-      ☐ Créer une clé USB bootable avec l'image ISO (dd ou Rufus)
-      ☐ Tester sur un PC réel (vérifier USB, GPU framebuffer, RAM détectée)
-      ☐ Vérifier que le clavier USB fonctionne sur vrai hardware
-      ☐ Vérifier que la mémoire détectée est correcte
-      ☐ Objectif : l'OS boot et NPL s'exécute sur vrai hardware
-    ☐ Distribution
-      ☐ Créer une image ISO finale propre
-      ☐ Écrire un README du projet
-      ☐ Écrire la documentation de NPL (syntaxe, exemples)
-      ☐ Objectif : quelqu'un d'autre peut builder et tester l'OS depuis zéro
+  ══════════════════════════════════════════════════════════════════
+  PHASE 12 — APPLICATIONS
+  ══════════════════════════════════════════════════════════════════
+
+  Terminal graphique:
+    ☐ Window WM (640x400, fond noir, police PSF)
+    ☐ Buffer 80x25 caractères
+    ☐ GUI_EVENT_KEY_DOWN → readline, afficher via gfx_draw_char
+    ☐ Scroll à la 25ème ligne
+    ☐ Shell branché : "echo hello" → "hello" affiché dans la window
+
+  Gestionnaire de fichiers:
+    ☐ Window WM avec liste des fichiers (vfs_readdir)
+    ☐ Navigation : double-clic dossier, bouton parent, chemin dans la barre titre
+    ☐ Ouvrir : .npl → NPL, .elf → exec ring 3, .txt → éditeur minimal
+
+  Barre de tâches:
+    ☐ Barre 32px en bas, z-order maximum (au dessus de tout sauf curseur)
+    ☐ Bouton par window ouverte (clic → focus)
+    ☐ Boutons lancement rapide : terminal, file manager, REPL NPL
+
+
+  ══════════════════════════════════════════════════════════════════
+  PHASE 13 — TESTS & POLISH
+  ══════════════════════════════════════════════════════════════════
+
+  Tests kernel:
+    ☐ Provoquer chaque exception CPU → message correct, pas de reboot
+    ☐ Allouer toute la RAM → kmalloc retourne NULL proprement
+    ☐ Scroll VGA 25 lignes, ticks timer
+    ☐ Objectif : kernel survit à tous les cas limites
+
+  Tests mémoire:
+    ☐ 1000 alloc/free de tailles aléatoires, pas de fuite, pas de fragmentation
+    ☐ Heap stable après session NPL complète
+
+  Tests multitâche:
+    ☐ 10 processus simultanés → pas de deadlock ni corruption
+    ☐ SIGKILL depuis un processus sur un autre
+    ☐ Pipes : données transmises sans perte
+
+  Tests device model:
+    ☐ Driver factice : probe() appelé au bon moment
+    ☐ Désenregistrement : remove() appelé, pas de fuite device
+
+  Tests userland:
+    ☐ ELF hello world en ring 3 → s'exécute, quitte proprement
+    ☐ Segfault ring 3 → #PF catché, process_exit, kernel continue
+    ☐ Accès mémoire kernel depuis ring 3 → GPF catchée, process tué
+
+  Tests VFS:
+    ☐ Lire /disk/test.txt (FAT32) et /tmp/test.txt (RamFS)
+    ☐ Écrire /tmp/test.txt, relire, contenu correct
+    ☐ /dev/null, /dev/zero : comportement attendu
+
+  Tests terminal texte:
+    ☐ 256 chars, historique 50 entrées, accents, clear/help/echo/mem/reboot
+
+  Tests NPL:
+    ☐ 100 lignes d'affilée, toutes les erreurs catchées, shell survit
+
+  Tests GUI:
+    ☐ 20 fenêtres ouvertes/fermées → pas de fuite mémoire
+    ☐ Drag rapide → pas de glitch
+    ☐ 500 lignes terminal graphique → scroll stable
+
+  Tests USB:
+    ☐ Clavier USB branché/débranché → détection via device model
+    ☐ Frappe rapide → pas de caractère perdu
+    ☐ Souris sur tout l'écran → curseur fluide
+
+  Polish visuel:
+    ☐ Splash screen au démarrage
+    ☐ Infos boot : RAM, version OS, version NPL
+    ☐ Prompt colorisé, messages d'erreur colorisés
+    ☐ Écran panic stylisé (fond rouge, texte blanc)
+
+  Expérience premier démarrage (OOBE):
+    ☐ Écran bienvenue + logo ASCII art
+    ☐ Sélection langue (FR / EN) → change la keymap
+    ☐ Saisie nom utilisateur → stocké dans /config/user.cfg
+    ☐ Bouton "Terminer" → bureau + barre de tâches
+    ☐ Flag /config/oobe.done pour ne plus afficher l'OOBE
+
+  Tests hardware réel:
+    ☐ Image USB bootable (dd ou Rufus)
+    ☐ Boot sur PC réel : USB, framebuffer, RAM détectée correcte
+    ☐ Clavier USB fonctionne sur vrai hardware
+    ☐ NPL s'exécute depuis la clé USB
+
+  Distribution:
+    ☐ Image ISO finale propre
+    ☐ README du projet
+    ☐ Documentation NPL (syntaxe, exemples)
+    ☐ Objectif : quelqu'un peut builder et tester depuis zéro
