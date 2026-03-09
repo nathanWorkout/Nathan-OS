@@ -61,7 +61,7 @@ main:
     mov ah, 0x02        ; Fonction 0x02 : Lire des secteurs
     mov al, 0x01        ; Lire 1 secteur
     mov ch, 0x00        ; CH = cylindre 0 (numéro de piste du disque)
-    mov cl, 0x02        ; Secteur 2
+    mov cl, 0x07        ; Secteur 7 car FAT32 occupe les secteurs 1-5, et CHS commence à 1 donc LBA 6 = secteur CHS 7
     mov dh, 0x00        ; Tête 0 (surface du plateau du disque dur)
     mov dl, [boot_drive]; Utilise le vrai numéro de disque fourni par le BIOS
     int 0x13            ; Lit le secteur 2 du disque dur

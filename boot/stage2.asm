@@ -80,62 +80,73 @@ read_cluster_loop:
 ; secteur = 49
 
     mov ah, 0x02        ; Fonction 0x02 : Lire des secteurs
-    mov al, 1           ; Lire 1 secteur
-    mov ch, 0           ; CH = cylindre 0 
-    mov cl, 49          ; Secteur 49
-    mov dh, 16          ; Tête 16
-    mov dl, 0x80        ; Premier disque dur (0)
-    mov ax, 0x0900      ; 
-    mov es, ax          ; es:bx = adresse de destination pour le secteur lu (0x9000:0x0000 = 0x90000)
-    xor bx, bx          ; Offset à 0
-    int 0x13            ; Lit le secteur 49 du disque dur
-    
-    mov si, 0x9000      ; Adresse du secteur lu (0x9000)
-    mov al, [si]    
-    cmp al, 0x00        ; Vérifie que le premier octet du secteur n'est pas 0 (indique un secteur vide)
-    je next_entry       ; Si le secteur est vide, continuer la recherche
-    cmp al, 0xE5        ; Vérifie que le premier octet du secteur n'est pas 0xE5 (l'entrée est inutilisé)
-    je next_entry   ; Saute si = 0
-    mov al, [si + 10]   ; 10 car le 10eme offset correspoond au 10eme octet (0 offset = 1er octet)
-    cmp al, 0x0F        ; Vérifie que l'entré de nom du fichier n'est pas trop longue
-    je next_entry       ; Pareil
-    mov di, kernel_name ; Adresse du nom de fichier attendu
-    mov [current_entry], si ; Sauvegarde le début de l'entrée actuelle pour pouvoir y revenir plus tard
-    mov cx, 11          ; KERNEL  BIN
+        mov al, 1           ; Lire 1 secteur
+        mov ch, 0           ; CH = cylindre 0 
+        mov cl, 49          ; Secteur 49
+        mov dh, 16          ; Tête 16
+        mov dl, 0x80        ; Premier disque dur (0)
+        mov ax, 0x0900      ; 
+        mov es, ax          ; es:bx = adresse de destination pour le secteur lu (0x9000:0x0000 = 0x90000)
+        xor bx, bx          ; Offset à 0
+        int 0x13            ; Lit le secteur 49 du disque dur
+        
+        mov si, 0x9000      ; si pointe sur la première entrée du répertoire racine
 
-read_name: 
-    mov al, [si]        ; lire un octet du secteur
-    mov bl, [di]        ; lire un octet du nom attendu
-    cmp al, bl
-    jne next_entry      ; Passer à l'entrée suivante du répertoire racine
-    inc si              ; Passer à l'octet suivant du secteur
-    inc di              ; Passer à l'octet suivant du nom attendu
-    loop read_name      ; Répéter pour les 11 octets du nom
-    jmp kernel_found      ; Si le nom correspond, on a trouvé le kernel
+    check_entry:            ; début de la boucle — APRÈS la lecture disque, on ne relit pas à chaque tour
+        mov al, [si]    
+        cmp al, 0x00        ; Vérifie que le premier octet du secteur n'est pas 0 (indique un secteur vide)
+        je dir_end          ; fin du répertoire, le kernel n'existe pas sur le disque
+        cmp al, 0xE5        ; Vérifie que le premier octet du secteur n'est pas 0xE5 (l'entrée est inutilisé)
+        je next_entry
+        mov al, [si + 11]   ; offset 11 = octet d'attributs de l'entrée (pas 10 — offset 10 = dernier octet du nom)
+        cmp al, 0x0F        ; 0x0F = attribut LFN (Long File Name), entrée à ignorer car pas au format 8.3
+        je next_entry
+        mov di, kernel_name ; Adresse du nom de fichier attendu
+        mov [current_entry], si ; Sauvegarde le début de l'entrée actuelle pour pouvoir y revenir plus tard
+        push si             ; sauvegarde si sur la pile — read_name va l'incrémenter, il faut pouvoir revenir
+        mov cx, 11          ; KERNEL  BIN
 
-next_entry: 
-    add si, 32          ; 32 car chaque entrée de répertoire fait 32 octets, on passe à la prochaine entrée
-    jmp read_cluster_loop ; Recommencer la boucle pour lire la prochaine entrée du répertoire racine
+    read_name: 
+        mov al, [si]        ; lire un octet du secteur
+        mov bl, [di]        ; lire un octet du nom attendu
+        cmp al, bl
+        jne name_mismatch   ; les octets diffèrent : ce n'est pas le bon fichier
+        inc si              ; Passer à l'octet suivant du secteur
+        inc di              ; Passer à l'octet suivant du nom attendu
+        loop read_name      ; Répéter pour les 11 octets du nom
+        pop si              ; les 11 octets correspondent : on restaure si (current_entry suffit mais on dépile proprement)
+        jmp kernel_found    ; Si le nom correspond, on a trouvé le kernel
 
-kernel_found:
-    sub si, 11
-    mov si, [current_entry] ; Revenir au début de l'entrée du kernel trouvée
-    mov bx, [si + 0x14]  ; cluster haut (16 bits)
-    shl ebx, 16          ; décale vers le haut          ; Foutu spec de FAT que j'avais pas vu et qui m'a bloqué un peu mais j'ai trouvé ça
-    mov bx, [si + 0x1A]  ; cluster bas (16 bits)
-    ; ebx contient maintenant le numéro de cluster complet
-    ; POV J'UTILISE ENFIN UN REGISTRE 32 BITS POUR LA PREMIERE FOIS WOOHOO 
+    name_mismatch:
+        pop si              ; restaure si avant de passer à l'entrée suivante (dépile ce qu'on a empilé avant read_name)
 
-    ; Maintenant faut calculer le secteur FAT qui corespond au secteur lu dans ebx
-    ; secteur FAT = FAT_start + (cluster * 4) / 512
-    ; offset      = (cluster * 4) % 512
-    
+    next_entry: 
+        add si, 32          ; 32 car chaque entrée de répertoire fait 32 octets, on passe à la prochaine entrée
+        jmp check_entry     ; retour au début de la boucle — SURTOUT PAS read_cluster_loop qui remettrait si à 0x9000
+
+    dir_end:                ; on a parcouru tout le répertoire sans trouver KERNEL  BIN
+        cli
+        hlt                 ; arrêt machine — le kernel est introuvable, rien à faire de plus
+
+    kernel_found:
+        mov si, [current_entry] ; Revenir au début de l'entrée du kernel trouvée
+        mov bx, [si + 0x14]  ; cluster haut (16 bits)
+        shl ebx, 16          ; décale vers le haut — Foutu spec de FAT que j'avais pas vu et qui m'a bloqué un peu mais j'ai trouvé ça
+        mov bx, [si + 0x1A]  ; cluster bas (16 bits)
+        ; ebx contient maintenant le numéro de cluster complet
+        ; POV J'UTILISE ENFIN UN REGISTRE 32 BITS POUR LA PREMIERE FOIS WOOHOO 
+
+        ; Maintenant faut calculer le secteur FAT qui correspond au cluster lu dans ebx
+        ; secteur FAT = FAT_start + (cluster * 4) / 512
+        ; offset      = (cluster * 4) % 512
+
+        
 
 
 
-; Le format de fat 32 est de 11 octets : le nom du fichier et l'extenssion donc on dois les remplir
-kernel_name db "KERNEL  BIN"
-current_entry dw 0              ; Pour Sauvegarder le début de l'entrée
+    ; Le format de fat 32 est de 11 octets : le nom du fichier et l'extenssion donc on dois les remplir
+    kernel_name db "KERNEL  BIN"
+    current_entry dw 0              ; Pour Sauvegarder le début de l'entrée
 
 
 
