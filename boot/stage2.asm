@@ -226,7 +226,7 @@ load_clusters:
     mov al, 8
     mov dl, 0x80
     push ax
-    mov ax, 0x1000
+    mov ax, 0x2000
     mov es, ax
     pop ax
     xor bx, bx
@@ -243,3 +243,111 @@ disk_error:
 ; Le format de fat 32 est de 11 octets : le nom du fichier et l'extenssion donc on dois les remplir
 kernel_name db "KERNEL  BIN"
 current_entry dw 0              ; Pour Sauvegarder le début de l'entrée
+
+; On fait la GDT
+;l e CPU lit une entrée dans la GDT qui contient :
+; base address
+; limit
+; type (code / data)
+; privilege level
+; flags
+;
+; Donc la gdp est INNDISPENSABLE
+
+gdt_start:
+
+gdt_null: dq 0x0000000000000000 ; Entrée pour la gdp
+
+; Ring 0 (segment code)
+gdt_code: 
+    dw 0xFFFF        ; limit low
+    dw 0x0000        ; base low
+    db 0x00          ; base middle
+    db 10011010b     ; access byte
+    db 11001111b     ; flags + limit high
+    db 0x00          ; base high
+
+; Ring 0 (segment data)
+gdt_data:
+    dw 0xFFFF
+    dw 0x0000
+    db 0x00
+    db 10010010b
+    db 11001111b
+    db 0x00
+
+gdt_end:
+
+; Le cpu attend : 
+; 16 bits : taille
+; 32 bits : adresse
+gdtd:
+    dw gdt_end - gdt_start - 1
+    dd gdt_start
+
+load_gdt:
+    lgdt [gdtd]
+
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax
+    jmp 0x08:protected_mode   
+
+; 10011010b     le code créer se segment
+; 1    -> présent
+; 00   -> ring 0
+; 1    -> code/data (descriptor type)
+; 1    -> executable (code)
+; 0    -> non-conforming
+; 1    -> readable
+; 0    -> accessed (mis à 1 par le CPU automatiquement)
+
+[BITS 32]
+; ON EST ENFIN EN 32 BITS WOUH !
+
+protected_mode:
+
+; Recharger les segments
+    mov ax, 0x10    ; Entrée data
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+    ; Vaut mieux pas faire d'accès mémoire selon INTEL donc azy
+
+    mov esp, 0x90000    ; Sinon en mode protégé la pile a une valeure aléatoire du mode réel
+
+
+; Maintenant faut parser le header du kernel.bin QUI EST EN GDB ALORS QUE L'EXTENTION .BIN M'A INDUIT EN ERREUR ET J'AI PASSER 6H DE DEBUG POUR CA RRAAHHH
+; Le header nous dit ou se situ le code
+
+; Algo : 
+;1. esi = 0x20000  (début du fichier ELF en mémoire)
+
+; 2. lire e_entry  à [esi + 0x18]  -> sauvegarder
+; 3. lire e_phoff  à [esi + 0x1C]  -> esi_ph = esi + e_phoff (offset de la table des Program Headers)
+; 4. lire e_phnum  à [esi + 0x2C]  -> compteur de boucle
+
+;  5. boucle pour chaque segment :
+;     lire p_type   à [esi_ph + 0x00]
+;      si p_type != 1 -> segment suivant (skip)
+;      
+;      lire p_offset à [esi_ph + 0x04]
+;      lire p_vaddr  à [esi_ph + 0x08]
+;      lire p_filesz à [esi_ph + 0x10]
+;      
+;      copier p_filesz octets de (0x20000 + p_offset) vers p_vaddr
+;      
+;      esi_ph += 32  (segment suivant)
+;      boucle
+
+; 6. sauter sur e_entry
+
+    mov esi, 0x20000        ;(début du fichier elf endébutt du kernel.bin)
+    mov eax, [esi + 0x18]   ; e_entry est a l'offset 0x18 
+    mov eax, [esi + 0x1C]   ; same
+    ; Comme e_phum est un champ 16 bits :
+    movzx ecx, word [esi + 0x2C]    ; ECX = nombre de program header et cette ligne converti du 32 bits en 16 bits
+
+    

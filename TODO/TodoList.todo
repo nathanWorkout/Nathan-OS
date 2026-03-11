@@ -80,28 +80,28 @@ OS From Scratch (Nathan OS):
                     ✔ Diviser par 512 → eax = secteur FAT, edx = offset dans ce secteur @started(26-03-11 15:19) @done(26-03-11 15:19) @lasted(11s)
                     ✔ Ajouter FAT_start (32) à eax pour obtenir le LBA réel @started(26-03-11 15:19) @done(26-03-11 15:19) @lasted(13s)
                     ✔ Convertir ce LBA en CHS @started(26-03-11 15:19) @done(26-03-11 15:19) @lasted(14s)
-                    ☐ Lire le secteur avec int 0x13
-                    ☐ Lire les 4 octets à l'offset edx dans le secteur lu
-                    ☐ Comparer avec 0x0FFFFFF8
-                        ☐ >= 0x0FFFFFF8 → dernier cluster, aller lire les données
-                      ☐ < 0x0FFFFFF8 → mettre la valeur dans ebx, recommencer
+                    ✔ Lire le secteur avec int 0x13 @started(26-03-11 17:00) @done(26-03-11 17:00) @lasted(38s)
+                    ✔ Lire les 4 octets à l'offset edx dans le secteur lu @started(26-03-11 17:00) @done(26-03-11 17:00) @lasted(39s)
+                    ✔ Comparer avec 0x0FFFFFF8 @started(26-03-11 17:00) @done(26-03-11 17:00) @lasted(40s)
+                        ✔ >= 0x0FFFFFF8 → dernier cluster, aller lire les données @started(26-03-11 17:00) @done(26-03-11 17:00) @lasted(41s)
+                      ✔ < 0x0FFFFFF8 → mettre la valeur dans ebx, recommencer @started(26-03-11 17:00) @done(26-03-11 17:00) @lasted(42s)
                       JEN PEUX PLUS DU FAT RRAAHHHH MARRE MARRE MARRE C TROP DUUUUUURRRRRR
-                ☐ Chercher le fichier "KERNEL  BIN" (format 8.3) dans le répertoire
-                ☐ Récupérer le premier cluster du fichier depuis l'entrée
-                ☐ Suivre la chaîne de clusters dans la FAT jusqu'à 0x0FFFFFFF
-            ☐ Lire les clusters du fichier et les écrire en mémoire basse (0x10000)
+                ✔ Chercher le fichier "KERNEL  BIN" (format 8.3) dans le répertoire @started(26-03-11 17:00) @done(26-03-11 17:00) @lasted(45s)
+                ✔ Récupérer le premier cluster du fichier depuis l'entrée @started(26-03-11 17:00) @done(26-03-11 17:00) @lasted(46s)
+                ✔ Suivre la chaîne de clusters dans la FAT jusqu'à 0x0FFFFFFF @started(26-03-11 17:00) @done(26-03-11 17:00) @lasted(47s)
+            ☐ Lire les clusters du fichier et les écrire en mémoire basse (0x10000) @started(26-03-11 17:00)
                 ☐ Objectif : kernel.bin entier copié à 0x10000 en RAM
 
-        ☐ Activer la ligne A20 — robuste
-            ☐ Vérifier que A20 est actif (test écriture/lecture au dessus de 1Mo)
-            ☐ Fallback via int 0x15 si port 0x92 échoue
-            ☐ Objectif : accès mémoire au dessus de 0xFFFFF sans corruption
+        ✔ Activer la ligne A20 — robuste @started(26-03-11 17:00) @done(26-03-11 17:00) @lasted(55s)
+        ✔ Vérifier que A20 est actif (test écriture/lecture au dessus de 1Mo) @started(26-03-11 17:00) @done(26-03-11 17:00) @lasted(56s)
+        ✔ Fallback via int 0x15 si port 0x92 échoue @started(26-03-11 17:00) @done(26-03-11 17:00) @lasted(59s)
+            ✔ Objectif : accès mémoire au dessus de 0xFFFFF sans corruption @started(26-03-11 17:00) @done(26-03-11 17:00) @lasted(1m)
 
-        ☐ Passer en mode protégé 32 bits
+        ☐ Passer en mode protégé 32 bits @started(26-03-11 17:15)
             ☐ Désactiver les interruptions (cli)
-            ☐ Écrire la GDT en mémoire
-                ☐ Entrée 0 : segment nul (8 octets à zéro)
-                ☐ Entrée 1 : segment code ring 0 (base 0, limite 4Go, exécutable)
+            ☐ Écrire la GDT en mémoire @started(26-03-11 17:15)
+                ✔ Entrée 0 : segment nul (8 octets à zéro) @started(26-03-11 17:15) @done(26-03-11 17:16) @lasted(1m2s)
+                ✔ Entrée 1 : segment code ring 0 (base 0, limite 4Go, exécutable) @started(26-03-11 17:16) @done(26-03-11 17:16) @lasted(4s)
                 ☐ Entrée 2 : segment data ring 0 (base 0, limite 4Go, lecture/écriture)
                 ☐ Entrée 3 : segment code ring 3 (DPL=3, pour les programmes user)
                 ☐ Entrée 4 : segment data ring 3 (DPL=3)
