@@ -74,7 +74,19 @@ OS From Scratch (Nathan OS):
                 ✔ Parser le BPB : secteurs par cluster, secteur début FAT, secteur début données @started(26-03-09 20:51) @done(26-03-09 20:51) @lasted(56s)
                 ✔ Calculer l'adresse du répertoire racine depuis le BPB @started(26-03-09 20:52) @done(26-03-09 20:52) @lasted(12s)
                 ☐ Lire le répertoire racine cluster par cluster @started(26-03-09 20:52)
-            ☐ Chercher le fichier "KERNEL  BIN" (format 8.3) dans le répertoire
+                  ✔ Lire l'entrée FAT du cluster trouvé @started(26-03-11 15:19) @done(26-03-11 15:19) @lasted(2s)
+                    ✔ Mettre le numéro de cluster (ebx) dans eax @started(26-03-11 15:19) @done(26-03-11 15:19) @lasted(4s)
+                    ✔ Multiplier eax par 4 (chaque entrée FAT32 = 4 octets) @started(26-03-11 15:19) @done(26-03-11 15:19) @lasted(6s)
+                    ✔ Diviser par 512 → eax = secteur FAT, edx = offset dans ce secteur @started(26-03-11 15:19) @done(26-03-11 15:19) @lasted(11s)
+                    ✔ Ajouter FAT_start (32) à eax pour obtenir le LBA réel @started(26-03-11 15:19) @done(26-03-11 15:19) @lasted(13s)
+                    ✔ Convertir ce LBA en CHS @started(26-03-11 15:19) @done(26-03-11 15:19) @lasted(14s)
+                    ☐ Lire le secteur avec int 0x13
+                    ☐ Lire les 4 octets à l'offset edx dans le secteur lu
+                    ☐ Comparer avec 0x0FFFFFF8
+                        ☐ >= 0x0FFFFFF8 → dernier cluster, aller lire les données
+                      ☐ < 0x0FFFFFF8 → mettre la valeur dans ebx, recommencer
+                      JEN PEUX PLUS DU FAT RRAAHHHH MARRE MARRE MARRE C TROP DUUUUUURRRRRR
+                ☐ Chercher le fichier "KERNEL  BIN" (format 8.3) dans le répertoire
                 ☐ Récupérer le premier cluster du fichier depuis l'entrée
                 ☐ Suivre la chaîne de clusters dans la FAT jusqu'à 0x0FFFFFFF
             ☐ Lire les clusters du fichier et les écrire en mémoire basse (0x10000)

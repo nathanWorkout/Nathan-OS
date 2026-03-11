@@ -1,12 +1,12 @@
 # Compilation tools
 CC = i686-elf-gcc
 AS = nasm
-LD = i686-elf-gcc
+LD = i686-elf-ld
 
 # Compilation flags
 CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 ASFLAGS = -f elf32
-LDFLAGS = -ffreestanding -O2 -nostdlib
+LDFLAGS = -nostdlib
 
 # Folders
 BUILD   = build
@@ -16,19 +16,22 @@ DRIVERS = drivers
 LIB     = lib
 IMG     = boot.img
 
-# Source files (auto-detected)
+# Source files
 C_SRCS = $(wildcard $(KERNEL)/*.c) \
          $(wildcard $(DRIVERS)/*.c) \
          $(wildcard $(LIB)/*.c)
 
-# Object files
-C_OBJS = $(patsubst %.c, $(BUILD)/%.o, $(notdir $(C_SRCS)))
+ASM_SRCS = $(wildcard $(KERNEL)/*.asm)
 
-# Compiler kernel
+# Object files
+C_OBJS   = $(patsubst %.c,   $(BUILD)/%.o, $(notdir $(C_SRCS)))
+ASM_OBJS = $(patsubst %.asm, $(BUILD)/%.o, $(notdir $(ASM_SRCS)))
+
+# Kernel
 all: $(BUILD)/kernel.bin
 
-$(BUILD)/kernel.bin: $(C_OBJS) linker.ld
-	$(LD) -T linker.ld -o $@ $(C_OBJS) $(LDFLAGS)
+$(BUILD)/kernel.bin: $(ASM_OBJS) $(C_OBJS) linker.ld
+	$(LD) -T linker.ld -o $@ $(ASM_OBJS) $(C_OBJS) $(LDFLAGS)
 
 $(BUILD)/%.o: $(KERNEL)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -39,6 +42,9 @@ $(BUILD)/%.o: $(DRIVERS)/%.c
 $(BUILD)/%.o: $(LIB)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/%.o: $(KERNEL)/%.asm
+	$(AS) $(ASFLAGS) $< -o $@
+
 # Bootloader
 $(BUILD)/stage1.bin: $(BOOT)/stage1.asm
 	$(AS) -f bin $< -o $@
@@ -47,15 +53,10 @@ $(BUILD)/stage2.bin: $(BOOT)/stage2.asm
 	$(AS) -f bin $< -o $@
 
 img: $(BUILD)/stage1.bin $(BUILD)/stage2.bin $(BUILD)/kernel.bin
-	# Créer une image vide de 256Mo (524288 secteurs * 512 octets)
 	dd if=/dev/zero of=$(IMG) bs=512 count=524288
-	# Formater en FAT32 (-R 32 = 32 secteurs réservés, cohérent avec le BPB)
 	mkfs.fat -F 32 -R 32 -S 512 $(IMG)
-	# Écrire stage1 par-dessus le boot sector FAT32 (garde le BPB, remplace le code)
 	dd if=$(BUILD)/stage1.bin of=$(IMG) bs=512 seek=0 conv=notrunc
-	# Écrire stage2 dans le secteur 1 (dans les secteurs réservés)
-	dd if=$(BUILD)/stage2.bin of=$(IMG) bs=512 seek=6 conv=notrunc
-	# Copier kernel.bin dans la partition FAT32
+	dd if=$(BUILD)/stage2.bin of=$(IMG) bs=512 seek=2 conv=notrunc
 	mcopy -i $(IMG) $(BUILD)/kernel.bin ::kernel.bin
 
 run-img: img
@@ -84,6 +85,7 @@ clean:
 #   set architecture i8086
 #   break *0x7c00       -> breakpoint début stage 1
 #   break *0x7E00       -> breakpoint début stage 2
+#   break *0x100000     -> breakpoint début kernel
 #   break *0xADDR       -> breakpoint à une adresse précise
 #   c                   -> continuer jusqu'au prochain breakpoint
 #   si                  -> exécuter une instruction (entre dans les interruptions)
