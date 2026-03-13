@@ -1,24 +1,11 @@
-ENTRY(_start) /* Entry point of the kernel */
+ENTRY(_start)
 
-SECTIONS
-{
-    . = 1M; /* Load the kernel at 1MB (0x100000) in x86 */
-
-    .text :
-    {
-        *(.multiboot) /* Multiboot header first (required by GRUB) */
-        *(.text)      /* Executable code */
+SECTIONS {
+    . = 0x100000;
+    .text : {
+        build/entry.o
+        *(.text)
     }
-
-    .data :
-    {
-        *(.rodata) /* Read-only data (constant strings) */
-        *(.data)   /* Initialized data */
-    }
-
-    .bss :
-    {
-        *(COMMON)  /* Uninitialized global variables */
-        *(.bss)    /* Uninitialized data */
-    }
+    .data : { *(.data) }
+    .bss  : { *(.bss)  }
 }

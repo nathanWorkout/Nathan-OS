@@ -48,24 +48,38 @@ main:
     mov ds, ax          ; Data Segment à 0
     mov es, ax          ; Extra Segment à 0
 
-    mov [boot_drive], dl; Sauvegarde le numéro de disque fourni par le BIOS
+    mov [boot_drive], dl ; Sauvegarde le numéro de disque fourni par le BIOS
 
     mov ax, 0x7000      ; Cette adresse car elle est libre en mémoire et ne risque pas d'écraser le bootloader
     mov ss, ax          ; Stack Segment à 0x7000
-    mov sp, 0x0000      ; Stack Pointer à 0 → wrappe à 0xFFFF, pile de 64Ko propre et alignée sur 2
+    mov sp, 0xFFFF      ; Stack Pointer à 0xFFFF, pile de 64Ko propre et alignée sur 2
     sti                 ; Réactive les interruptions
 
-    mov ax, 0x07E0      ; Segment de destination pour int 0x13 (0x07E0 * 16 = 0x7E00, juste après le bootloader)
-    mov es, ax          ; es ne peut pas recevoir une valeur immédiate, on passe par ax
-    xor bx, bx          ; Offset à 0 -> es:bx = 0x7E00:0x0000 = adresse physique 0x7E00
-    mov ah, 0x02        ; Fonction 0x02 : Lire des secteurs
-    mov al, 0x01        ; Lire 1 secteur
+    ; on prépare d'abord tous les registres CHS et ah/al AVANT de toucher es
+    ; sinon mov ax, segment écrase ah qui contient la fonction 0x02
+    mov ah, 0x02        ; Fonction 0x02 : Lire des secteurs - EN PREMIER avant tout mov ax
+    mov al, 0x02        ; Lire 2 secteurs (marge de sécurité si stage2 grossit)
     mov ch, 0x00        ; CH = cylindre 0 (numéro de piste du disque)
-    mov cl, 0x03        ; Secteur 3 en CHS = LBA 2 (CHS commence à 1 donc LBA+1), stage2 est au secteur 2
+    mov cl, 0x03    ; secteur 3 en CHS = LBA 2
     mov dh, 0x00        ; Tête 0 (surface du plateau du disque dur)
-    mov dl, [boot_drive]; Utilise le vrai numéro de disque fourni par le BIOS
-    int 0x13            ; Lit le secteur 2 du disque dur
-    jmp 0x07E0:0x0000   ; Far jump vers le stage 2 (recharge cs correctement)
+    mov dl, [boot_drive] ; Utilise le vrai numéro de disque fourni par le BIOS
+
+    ; maintenant seulement on configure es:bx (destination du int 0x13)
+    ; 0x07E0 * 16 = 0x7E00, juste après le bootloader en mémoire
+    mov bx, 0x07E0
+    mov es, bx          ; es = 0x07E0
+    xor bx, bx          ; Offset à 0 -> es:bx = 0x7E00:0x0000 = adresse physique 0x7E00
+
+    int 0x13            ; Lit les secteurs de stage2 depuis le disque
+    jc boot_error       ; Si erreur de lecture (carry flag), on s'arrête
+
+    db 0xEA             ; opcode far jump
+    dw 0x0000           ; offset
+    dw 0x07E0           ; segment
+
+boot_error:
+    cli
+    hlt
 
 boot_drive db 0
 
