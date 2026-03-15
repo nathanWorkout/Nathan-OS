@@ -5,11 +5,22 @@ bits 16
 ; 1 -> la mémoire ram (mov)
 ; 2 -> les ports i/o : bus séparé de la ram, 65536 ports numérotés de 0x0000 à 0xffff, chaque périphérique a ses propres ports
 ; on choisit le registre al car le port 0x92 est un port 8 bits (al = moitié basse de ax, 8 bits)
-; activation de la ligne a20 via le port 0x92 
+; activation de la ligne a20 via le port 0x92
 ; sans a20 le bit 21 des adresses est bloqué à 0, impossible d'accéder au delà de 1mo de mémoire
+
+    ; sauvegarder dl EN TOUT PREMIER avant que quoi que ce soit ne l'écrase
+    ; dl contient le numéro de disque transmis par le BIOS -> stage1 -> stage2 (convention)
+    mov [cs:boot_drive], dl    ; BUG CORRIGÉ : préfixe cs: obligatoire ici
+                               ; à ce stade ds peut valoir n'importe quoi (le BIOS ne le garantit pas)
+                               ; or boot_drive est dans le segment de code (org 0x7e00)
+                               ; cs est toujours correct car c'est lui qui pointe stage2
+                               ; sans cs: on risque d'écrire dans ds:boot_drive = adresse aléatoire
 
     ; on remet ds à 0 au début du stage2 car le far jump depuis stage1 a rechargé cs
     ; mais ds peut valoir n'importe quoi selon le BIOS
+    ; BUG CORRIGÉ : cs est maintenant 0x0000 grâce au far jump corrigé dans stage1
+    ; (cs=0x0000, offset=0x7E00 au lieu de cs=0x07E0, offset=0x0000)
+    ; avec cs=0 : [cs:label] = [0*16 + label_nasm] = adresse physique correcte
     xor ax, ax
     mov ds, ax
     mov es, ax
@@ -35,23 +46,48 @@ bits 16
     cmp al, 0x55                ; si pareil -> a20 inactif, sinon -> a20 actif
     jne a20_ok                  ; a20 actif, on continue
 
-    mov ax, 0x2401      ; fonction pour activer le port a20 via le bios 
+    mov ax, 0x2401      ; fonction pour activer le port a20 via le bios
     int 0x15            ; interruption pour activer a20 via le bios (alternative au port 0x92)
-    jnc a20_ok          ; si pas d'erreur, a20 est activé, sinon échec (c'est la différence avec jne la)
+    jnc a20_ok          ; si pas d'erreur, a20 est activé
 
 a20_fail:
+    mov word [0x5000], 0xDEAD   ; DEBUG : a20_fail
     cli
     hlt
 
 a20_ok:
+    mov word [0x5002], 0xBEEF   ; DEBUG : a20_ok atteint
     sti                 ; réactive les interruptions pour que int 0x13 fonctionne
-; a20 est maintenant activé, on peut accéder à toute la mémoire au-delà de 1mo
 
 ; =====================================================
-; LECTURE LBA ÉTENDU (int 0x13 / ah=0x42)
+; TEST SUPPORT LBA ÉTENDU (int 0x13 / ah=0x41)
 ; =====================================================
-; On abandonne le CHS hardcodé (trop fragile, géométrie variable selon QEMU/hardware)
-; et on passe à l'adressage LBA étendu qui utilise juste le numéro de secteur direct
+; avant d'utiliser int 0x13/0x42, on vérifie que le BIOS supporte les extensions LBA
+; ah=0x41 : fonction de détection, bx=0x55AA magic requis
+; si supporté : carry=0
+; si non supporté : carry=1 -> on s'arrête
+
+    mov ah, 0x41
+    mov bx, 0x55AA
+    mov dl, [boot_drive]    ; ds=0 ici donc [boot_drive] = [0x0000 + offset_nasm] = correct
+    int 0x13
+    mov word [0x5004], 0xBEEF   ; DEBUG : retour int 0x13 lba check
+    mov [0x5006], ax            ; DEBUG : ax après lba check
+    jc lba_not_supported        ; carry=1 -> extensions non supportées
+    jmp lba_supported           ; carry=0 -> LBA ok (on ignore bx, QEMU ne le met pas à 0xAA55)
+
+lba_not_supported:
+    mov word [0x5008], 0xDEAD   ; DEBUG : lba non supporté
+    cli
+    hlt                         ; LBA étendu non supporté, arrêt
+
+lba_supported:
+    mov word [0x500A], 0xBEEF   ; DEBUG : lba supporté
+
+; =====================================================
+; LECTURE DU RÉPERTOIRE RACINE (int 0x13 / ah=0x42)
+; =====================================================
+; On utilise l'adressage LBA étendu qui utilise juste le numéro de secteur direct
 ;
 ; Le DAP (Disk Address Packet) est une structure de 16 octets en mémoire :
 ;   offset 0x00 : taille du DAP (0x10 = 16 octets)
@@ -67,170 +103,237 @@ a20_ok:
 ; fat_size  = 512 secteurs par FAT
 ; lba_root  = 32 + 2 * 512 = 1056
 
-    ; on remplit le DAP pour lire le répertoire racine (LBA 1056)
-    ; le DAP est stocké à 0x7000 (zone libre, pile est à ss:sp=0x0000:0x7000 donc on descend)
-    ; on le met à 0x0600 pour éviter tout conflit avec la pile à 0x7000
-
     mov word [dap],        0x0010   ; taille du DAP = 16 octets
     mov word [dap + 0x02], 0x0001   ; lire 1 secteur
-    mov word [dap + 0x04], 0x0000   ; offset destination = 0x0000
-    mov word [dap + 0x06], 0x0900   ; segment destination = 0x0900 -> adresse physique 0x9000
+    mov word [dap + 0x04], 0x9000   ; offset destination = 0x9000
+    mov word [dap + 0x06], 0x0000   ; segment destination = 0x0000
     mov dword [dap + 0x08], 1056    ; LBA bas : secteur 1056 (répertoire racine)
     mov dword [dap + 0x0C], 0       ; LBA haut : 0 (disque < 2To)
 
+    ; DEBUG : snapshot du DAP avant int 0x13 racine -> 0x5100
+    mov word [0x5100], 0xBEEF
+    mov ax, [dap]
+    mov [0x5110], ax
+    mov ax, [dap + 0x02]
+    mov [0x5112], ax
+    mov ax, [dap + 0x04]
+    mov [0x5114], ax
+    mov ax, [dap + 0x06]
+    mov [0x5116], ax
+    mov eax, [dap + 0x08]
+    mov [0x5118], eax
+    mov eax, [dap + 0x0C]
+    mov [0x511C], eax
+
     mov ah, 0x42        ; fonction 0x42 : lire via LBA étendu
-    mov dl, 0x80        ; premier disque dur
-    mov si, dap         ; ds:si pointe sur le DAP
+    mov dl, [boot_drive]
+    mov si, dap         ; ds:si pointe sur le DAP (ds=0, si=adresse nasm du dap -> correct)
     int 0x13
+
+    mov [0x5102], ax                ; ax après int 0x13 racine
+    mov word [0x5104], 0xDEAD
     jc disk_error
+    mov word [0x5106], 0x1234       ; carry=0, lecture ok
 
     ; on pointe ds sur 0x9000 pour lire les entrées du répertoire
-    ; ATTENTION : ds sera remis à 0 avant lgdt plus bas
-    mov ax, 0x9000
+    xor ax, ax
     mov ds, ax
-    mov si, 0x0000      ; si pointe sur la première entrée du répertoire racine
+    mov si, 0x9000
 
-check_entry:            ; début de la boucle - apres la lecture disque, on ne relit pas à chaque tour
-    mov al, [si]    
-    cmp al, 0x00        ; vérifie que le premier octet du secteur n'est pas 0 (indique un secteur vide)
-    je dir_end          ; fin du répertoire, le kernel n'existe pas sur le disque
-    cmp al, 0xe5        ; vérifie que le premier octet du secteur n'est pas 0xe5 (l'entrée est inutilisée)
+check_entry:
+    mov al, [si]
+    cmp al, 0x00        ; premier octet = 0 -> fin du répertoire, plus aucune entrée après
+    je dir_end
+    cmp al, 0xe5        ; premier octet = 0xe5 -> entrée supprimée, on l'ignore
     je next_entry
-    mov al, [si + 11]   ; offset 11 = octet d'attributs de l'entrée (pas 10 ; offset 10 = dernier octet du nom)
-    cmp al, 0x0f        ; 0x0f = attribut lfn (long file name), entrée à ignorer car pas au format 8.3
+    mov al, [si + 11]   ; offset 11 = octet d'attributs de l'entrée
+    cmp al, 0x0f        ; 0x0f = attribut LFN (Long File Name), entrée à ignorer car pas au format 8.3
     je next_entry
-    mov di, kernel_name ; adresse du nom de fichier attendu
-    mov [cs:current_entry], si  ; sauvegarde le début de l'entrée actuelle (cs: car ds=0x9000)
-    push si             ; sauvegarde si sur la pile - read_name va l'incrémenter, il faut pouvoir revenir
-    mov cx, 11          ; kernel  bin = 11 octets au format 8.3
 
-read_name: 
-    mov al, [si]        ; lire un octet du secteur (ds=0x9000, correct)
-    mov bl, [cs:di]     ; lire un octet du nom attendu (cs: car kernel_name est dans stage2, pas à 0x9000)
-    cmp al, bl
+    ; BUG CORRIGÉ : on sauvegarde si dans current_entry AVANT de le modifier
+    ; current_entry est dans le segment de code (org 0x7e00)
+    ; ds=0x9000 ici donc on DOIT utiliser cs: pour accéder à nos variables
+    mov [cs:current_entry], si  ; sauvegarde le début de l'entrée actuelle
+
+    push si             ; sauvegarde si avant la boucle de comparaison
+
+    ; BUG CORRIGÉ : on utilise un registre séparé (bx) comme pointeur dans kernel_name
+    ; au lieu de di seul, car di est utilisé comme adresse absolue mais ds=0x9000
+    ; -> [di] lirait dans le segment 0x9000 = dans le répertoire, pas dans kernel_name
+    ; en préfixant cs: on lit bien dans le segment de code où kernel_name est défini
+    mov bx, 0           ; bx = index dans kernel_name (0 à 10)
+    mov cx, 11          ; "KERNEL  BIN" = 11 octets au format 8.3
+
+read_name:
+    mov al, [si]                        ; lire un octet du répertoire (ds=0x9000 -> correct)
+    mov dl, [cs:kernel_name + bx]       ; BUG CORRIGÉ : cs: pour lire kernel_name dans le code stage2
+                                        ; sans cs: on lirait ds:kernel_name = 0x9000*16 + offset
+                                        ; = dans le secteur racine FAT32, pas dans notre chaîne
+    cmp al, dl
     jne name_mismatch   ; les octets diffèrent : ce n'est pas le bon fichier
-    inc si              ; passer à l'octet suivant du secteur
-    inc di              ; passer à l'octet suivant du nom attendu
-    loop read_name      ; répéter pour les 11 octets du nom
-    pop si              ; les 11 octets correspondent : on restaure si (current_entry suffit mais on dépile proprement)
-    jmp kernel_found    ; si le nom correspond, on a trouvé le kernel
+    inc si
+    inc bx
+    loop read_name      ; répéter pour les 11 octets
+    pop si              ; les 11 octets correspondent : dépile proprement
+    jmp kernel_found
 
 name_mismatch:
-    pop si              ; restaure si avant de passer à l'entrée suivante (dépile ce qu'on a empilé avant read_name)
+    pop si              ; restaure si avant de passer à l'entrée suivante
 
-next_entry: 
-    add si, 32          ; 32 car chaque entrée de répertoire fait 32 octets, on passe à la prochaine entrée
-    jmp check_entry     ; retour au début de la boucle
+next_entry:
+    add si, 32          ; chaque entrée de répertoire fait 32 octets
+    jmp check_entry
 
-dir_end:                ; on a parcouru tout le répertoire sans trouver kernel.bin
+dir_end:
     cli
-    hlt                 ; arrêt machine - le kernel est introuvable, rien à faire de plus
+    hlt                 ; kernel.bin introuvable, arrêt
 
 kernel_found:
-    mov si, [cs:current_entry]  ; revenir au début de l'entrée du kernel trouvée (cs: car ds=0x9000)
+    mov si, [cs:current_entry]  ; revenir au début de l'entrée du kernel (cs: car ds=0x9000)
     xor ebx, ebx
-    mov bx, [si + 0x14]     ; cluster haut (16 bits)
-    shl ebx, 16             ; décale vers le haut
-    mov bx, [si + 0x1a]     ; cluster bas (16 bits)
+    mov bx, [si + 0x14]     ; cluster haut (16 bits, offset 0x14 dans l'entrée FAT32)
+    shl ebx, 16             ; décale vers le haut pour former les 32 bits
+    mov bx, [si + 0x1a]     ; cluster bas (16 bits, offset 0x1a dans l'entrée FAT32)
     ; ebx contient maintenant le numéro de cluster complet sur 32 bits
 
-    ; =====================================================
-    ; LECTURE DE LA FAT POUR SUIVRE LA CHAÎNE DE CLUSTERS
-    ; =====================================================
-    ; chaque entrée FAT32 fait 4 octets
-    ; offset dans la FAT = cluster * 4
+    ; destination de chargement : 0x20000 en mémoire physique
+    ; on utilise un pointeur 32 bits stocké en mémoire car on est encore en 16 bits
+    ; on ne peut pas utiliser de registre 32 bits comme pointeur directement en mode réel
+    mov dword [cs:load_dest], 0x20000   ; BUG CORRIGÉ : cs: car ds=0x9000 encore ici
+
+; =====================================================
+; BOUCLE DE CHARGEMENT : SUIT LA CHAÎNE FAT ET CHARGE CHAQUE CLUSTER
+; =====================================================
+; on reste EN MODE RÉEL pendant toute cette boucle
+; int 0x13 ne fonctionne plus une fois en mode protégé
+; algo :
+;   1. calculer le secteur FAT du cluster courant (ebx)
+;   2. lire le secteur FAT -> buffer 0x10000
+;   3. lire l'entrée FAT à l'offset calculé
+;   4. calculer le LBA du cluster courant et charger ses 8 secteurs -> [load_dest]
+;   5. avancer load_dest de 8*512 = 4096 octets
+;   6. si l'entrée FAT >= 0x0FFFFFF8 -> dernier cluster, on arrête
+;   7. sinon ebx = entrée FAT (prochain cluster), retour en 1
+
+load_next_cluster:
+
+    ; étape 1 : calculer secteur FAT et offset pour le cluster ebx
+    ; offset dans la FAT (en octets) = cluster * 4 (chaque entrée FAT32 = 4 octets)
     ; secteur FAT = fat_start + (offset / 512)
-    ; offset dans ce secteur = offset % 512
-    ;
-    ; fat_start = 32 (reserved_sectors)
+    ; offset dans le secteur = offset % 512
+    ; fat_start = 32 (reserved_sectors du BPB)
 
-    mov eax, ebx         ; numéro de cluster
-    shl eax, 2           ; multiplie par 4 car chaque entrée fat32 fait 4 octets
-    xor edx, edx         
-    mov ecx, 512         ; diviseur : 512 octets par secteur
-    div ecx              ; eax = secteur relatif dans la FAT, edx = offset dans ce secteur
-    add eax, 32          ; ajoute fat_start pour avoir le LBA réel
+    ; ds peut valoir 0x9000 ici, on remet à 0 pour accéder au DAP
+    xor cx, cx
+    mov ds, cx          ; ds=0 : toutes les variables de stage2 sont maintenant accessibles sans préfixe
 
-    push edx             ; sauvegarde l'offset dans le secteur FAT
+    mov eax, ebx        ; numéro de cluster courant
+    shl eax, 2          ; multiplie par 4 : offset en octets dans la FAT
+    xor edx, edx
+    mov ecx, 512        ; 512 octets par secteur
+    div ecx             ; eax = secteur relatif dans la FAT, edx = offset dans ce secteur
+    add eax, 32         ; ajoute fat_start -> LBA réel du secteur FAT
 
-    ; lire le secteur FAT via LBA étendu
+    push edx            ; sauvegarde l'offset dans le secteur FAT (on en aura besoin après la lecture)
+
+    ; étape 2 : lire le secteur FAT
+    ; IMPORTANT : buffer à 0x1000:0x0000 = adresse physique 0x10000
+    ; on évite 0x0800:0x0000 = 0x8000 qui chevauche le code stage2 (chargé à 0x7e00, ~600 octets)
     mov dword [dap + 0x08], eax     ; LBA du secteur FAT
     mov dword [dap + 0x0C], 0
     mov word  [dap + 0x02], 1       ; 1 secteur
-    mov word  [dap + 0x04], 0x0000  ; offset destination
-    mov word  [dap + 0x06], 0x0800  ; segment 0x0800 -> adresse physique 0x8000
+    mov word  [dap + 0x04], 0x0000  ; offset destination = 0
+    mov word  [dap + 0x06], 0x1000  ; segment 0x1000 -> adresse physique 0x10000
 
-    xor ax, ax
-    mov ds, ax          ; ds=0 pour que ds:si pointe correctement sur le DAP
     mov ah, 0x42
-    mov dl, 0x80
+    mov dl, [boot_drive]
     mov si, dap
     int 0x13
     jc disk_error
 
+    ; étape 3 : lire l'entrée FAT à l'offset edx
+    ; le secteur FAT est maintenant à 0x10000, on utilise es=0x1000
     pop esi             ; récupère l'offset dans le secteur FAT
-
-follow_chain:
-    ; lire l'entrée FAT à l'offset esi dans le buffer 0x8000
-    mov ax, 0x0800
+    mov ax, 0x1000      ; segment 0x1000 -> adresse physique 0x10000
     mov es, ax
-    mov eax, [es:esi]
-    and eax, 0x0fffffff     ; masque les 4 bits hauts réservés par FAT32
-    cmp eax, 0x0ffffff8
-    jae load_clusters       ; >= 0x0ffffff8 = dernier cluster -> on charge
-    mov ebx, eax            ; sinon ebx = prochain cluster, on suit la chaîne
-    jmp kernel_found        ; recalcule le secteur FAT pour ce cluster
+    mov eax, [es:esi]   ; lit les 4 octets de l'entrée FAT32
+    and eax, 0x0fffffff ; masque les 4 bits hauts réservés par FAT32
 
-load_clusters:
-    ; =====================================================
-    ; CHARGEMENT DU KERNEL EN MÉMOIRE
-    ; =====================================================
-    ; ebx = premier cluster du kernel
+    ; étape 4 : charger les données du cluster courant
     ; lba = data_start + (cluster - 2) * sectors_per_cluster
     ; data_start = reserved + fat_count * fat_size = 32 + 2*512 = 1056
-    ; sectors_per_cluster = 8 (valeur par défaut QEMU avec -F 32)
-    ; destination : 0x2000:0x0000 = adresse physique 0x20000
+    ; sectors_per_cluster = 8
 
-    mov eax, ebx
-    sub eax, 2              ; les clusters commencent à 2 en FAT32
-    mov ecx, 8              ; sectors_per_cluster = 8
-    mul ecx               
-    add eax, 1056           ; data_start = 32 + 2*512
+    push eax            ; sauvegarde l'entrée FAT (prochain cluster ou marqueur fin)
 
-    ; lire 8 secteurs (1 cluster) via LBA étendu vers 0x20000
+    mov eax, ebx        ; cluster courant
+    sub eax, 2          ; les clusters commencent à 2 en FAT32
+    mov ecx, 8          ; sectors_per_cluster = 8
+    mul ecx
+    add eax, 1056       ; data_start
+
+    ; charger 8 secteurs vers [load_dest]
+    ; load_dest contient une adresse 32 bits (ex: 0x20000, 0x21000, 0x22000...)
+    ; en mode réel on ne peut pas mettre une adresse 32 bits dans es directement
+    ; on décompose : segment = load_dest >> 4, offset = load_dest & 0xF
+    ; pour nos adresses (multiples de 0x1000) : segment = load_dest >> 4, offset = 0
+
+    mov ebx, [load_dest]    ; adresse physique destination (ds=0 ici -> accès correct)
+    shr ebx, 4              ; convertit en segment (adresse / 16)
+
+    xor cx, cx
+    mov ds, cx              ; ds=0 pour accéder au DAP
+
     mov dword [dap + 0x08], eax     ; LBA du premier secteur du cluster
     mov dword [dap + 0x0C], 0
-    mov word  [dap + 0x02], 8       ; 8 secteurs = 1 cluster
-    mov word  [dap + 0x04], 0x0000  ; offset destination = 0
-    mov word  [dap + 0x06], 0x2000  ; segment 0x2000 -> adresse physique 0x20000
+    mov word  [dap + 0x02], 8       ; 8 secteurs = 1 cluster = 4096 octets
+    mov word  [dap + 0x04], 0x0000  ; offset = 0
+    mov [dap + 0x06], bx            ; segment destination calculé
 
-    xor ax, ax
-    mov ds, ax
     mov ah, 0x42
-    mov dl, 0x80
+    mov dl, [boot_drive]
     mov si, dap
     int 0x13
     jc disk_error
 
-    ; on remet ds à 0 AVANT lgdt - sinon lgdt lit gdtd au mauvais endroit
-    xor ax, ax
-    mov ds, ax
+    ; étape 5 : avancer le pointeur de destination
+    add dword [load_dest], 0x1000   ; 8 secteurs * 512 = 4096 = 0x1000 octets
+
+    ; étape 6 et 7 : vérifier si c'est le dernier cluster
+    pop eax             ; récupère l'entrée FAT sauvegardée
+    cmp eax, 0x0ffffff8
+    jae done_loading    ; >= 0x0ffffff8 -> dernier cluster, tout le kernel est chargé
+
+    mov ebx, eax        ; sinon : ebx = prochain cluster
+    jmp load_next_cluster
+
+done_loading:
 
     ; =====================================================
     ; BASCULE EN MODE PROTÉGÉ 32 BITS
     ; =====================================================
-    lgdt [gdtd]         ; charge la GDT
-    mov eax, cr0
-    or eax, 1           ; bit PE (Protection Enable) = 1
-    mov cr0, eax
-    jmp 0x08:protected_mode     ; far jump qui flush le pipeline et active le mode protégé
+    ; TOUTES les lectures disque sont finies ici
+    ; int 0x13 ne fonctionnerait plus après cette bascule
 
-disk_error: 
-    cli 
+    cli                 ; désactive les interruptions avant la bascule (obligatoire)
+
+    xor ax, ax
+    mov ds, ax          ; ds=0 AVANT lgdt, sinon lgdt lit gdtd au mauvais endroit
+
+    lgdt [gdtd]         ; charge la GDT dans le registre GDTR du CPU
+
+    mov eax, cr0
+    or eax, 1           ; bit PE (Protection Enable) = 1 -> active le mode protégé
+    mov cr0, eax
+
+    jmp 0x08:protected_mode ; far jump qui flush le pipeline et recharge cs avec le sélecteur 0x08
+
+disk_error:
+    cli
     hlt
 
 ; =====================================================
-; DONNÉES
+; DONNÉES 16 BITS
 ; =====================================================
 
 ; DAP (Disk Address Packet) pour int 0x13/0x42
@@ -246,7 +349,9 @@ dap:
 
 ; le format FAT32 utilise des noms de 11 octets : 8 pour le nom + 3 pour l'extension
 kernel_name db "KERNEL  BIN"    ; en majuscules : FAT32 stocke les noms en majuscules
-current_entry dw 0              ; sauvegarde le début de l'entrée courante
+current_entry dw 0              ; sauvegarde le début de l'entrée courante du répertoire
+load_dest dd 0x20000            ; adresse physique courante de chargement du kernel (avance cluster par cluster)
+boot_drive db 0                 ; numéro de disque transmis par le BIOS, sauvegardé en tout premier
 
 ; =====================================================
 ; GDT (Global Descriptor Table)
@@ -260,7 +365,7 @@ gdt_start:
 gdt_null: dq 0x0000000000000000 ; entrée nulle obligatoire (le cpu plante si on l'oublie)
 
 ; 0x08 - ring 0 (segment code kernel)
-gdt_code: 
+gdt_code:
     dw 0xffff        ; limit low
     dw 0x0000        ; base low
     db 0x00          ; base middle
@@ -318,7 +423,7 @@ gdtd:
 
 protected_mode:
 
-; recharger les segments avec le sélecteur data ring 0 (0x10)
+    ; recharger les segments avec le sélecteur data ring 0 (0x10)
     mov ax, 0x10
     mov ds, ax
     mov es, ax
@@ -335,29 +440,45 @@ protected_mode:
 ; on lit les program headers pour copier chaque segment PT_LOAD
 ; à son adresse virtuelle (p_vaddr), puis on saute sur e_entry
 ;
+; structure d'un ELF32 header (les offsets qui nous intéressent) :
+;   0x00 : magic  (4 octets : 0x7f 'E' 'L' 'F')
+;   0x18 : e_entry  (4 octets : adresse d'entrée du kernel)
+;   0x1c : e_phoff  (4 octets : offset de la table des program headers)
+;   0x2c : e_phnum  (2 octets : nombre de programme headers)
+;
+; structure d'un program header ELF32 (32 octets) :
+;   0x00 : p_type   (4 octets : type du segment, PT_LOAD = 1)
+;   0x04 : p_offset (4 octets : offset du segment dans le fichier ELF)
+;   0x08 : p_vaddr  (4 octets : adresse virtuelle de destination)
+;   0x0c : p_paddr  (4 octets : adresse physique, ignorée ici)
+;   0x10 : p_filesz (4 octets : taille du segment dans le fichier)
+;   0x14 : p_memsz  (4 octets : taille en mémoire, peut être > filesz pour le BSS)
+;
 ; algo :
-; 1. esi = 0x20000  (début du fichier elf en mémoire)
-; 2. lire e_entry  à [esi + 0x18]  -> sauvegarder dans edi
-; 3. lire e_phoff  à [esi + 0x1c]  -> ebp = esi + e_phoff
-; 4. lire e_phnum  à [esi + 0x2c]  -> compteur de boucle dans ecx
+; 1. esi = 0x20000  (début du fichier ELF en mémoire)
+; 2. lire e_entry  à [esi + 0x18] -> sauvegarder dans [entry_point]
+; 3. lire e_phoff  à [esi + 0x1c] -> ebp = esi + e_phoff
+; 4. lire e_phnum  à [esi + 0x2c] -> compteur dans ecx
 ; 5. boucle pour chaque segment :
-;    lire p_type à [ebp + 0x00]
+;    lire p_type   à [ebp + 0x00]
 ;    si p_type != 1 (PT_LOAD) -> skip
 ;    lire p_offset à [ebp + 0x04]
 ;    lire p_vaddr  à [ebp + 0x08]
 ;    lire p_filesz à [ebp + 0x10]
 ;    copier p_filesz octets de (0x20000 + p_offset) vers p_vaddr
-;    ebp += 0x20 (taille d'un program header)
-; 6. jmp edi (e_entry)
+;    zéroiser (p_memsz - p_filesz) octets après (BSS)
+;    ebp += 0x20 (taille d'un program header = 32 octets)
+; 6. jmp [entry_point]
 
     mov esi, 0x20000            ; début du fichier ELF en mémoire
 
     mov eax, [esi + 0x18]       ; e_entry : adresse d'entrée du kernel
-    mov edi, eax                ; sauvegarde e_entry dans edi pour le jump final
+    mov [entry_point], eax      ; sauvegarde dans une variable mémoire
+                                  ; on n'utilise plus edi pour ça -> évite les conflits avec rep movsb
 
     mov eax, [esi + 0x1c]       ; e_phoff : offset de la table des program headers
     add eax, esi                ; adresse absolue du premier program header
-    mov ebp, eax
+    mov ebp, eax                ; ebp = pointeur sur le program header courant
 
     movzx ecx, word [esi + 0x2c] ; e_phnum : nombre de segments (champ 16 bits -> 32 bits)
 
@@ -366,30 +487,50 @@ parse_ph_loop:
     je done_parsing             ; plus de segments -> on saute vers le kernel
 
     mov eax, [ebp + 0x00]       ; p_type
-    cmp eax, 1                  ; PT_LOAD = 1, seul type à copier (les autres sont des métadonnées)
+    cmp eax, 1                  ; PT_LOAD = 1, seul type à copier
     jne skip_segment
 
     ; segment PT_LOAD : copier de (0x20000 + p_offset) vers p_vaddr
+    push ecx                    ; sauvegarde le compteur de boucle (rep movsb écrase ecx)
+    push ebp                    ; sauvegarde le pointeur sur le program header courant
+    push esi                    ; sauvegarde la base ELF (rep movsb écrase esi)
+
     mov eax, [ebp + 0x04]       ; p_offset : offset du segment dans le fichier ELF
     add eax, 0x20000            ; adresse source = base ELF + p_offset
-    push esi                    ; sauvegarde esi (base ELF)
-    mov esi, eax
+    mov esi, eax                ; esi = source pour rep movsb
 
-    push edi                    ; sauvegarde e_entry
-    mov edi, [ebp + 0x08]       ; p_vaddr : adresse destination
+    mov edi, [ebp + 0x08]       ; p_vaddr : adresse destination pour rep movsb
 
-    push ecx                    ; rep movsb écrase ecx -> sauvegarde
-    mov ecx, [ebp + 0x10]       ; p_filesz : nombre d'octets à copier
-    rep movsb                   ; copie ecx octets de [esi] vers [edi]
-    pop ecx
+    mov ecx, [ebp + 0x10]       ; p_filesz : nombre d'octets à copier depuis le fichier
+    rep movsb                   ; copie ecx octets de [esi] vers [edi], incrémente esi/edi
 
-    pop edi                     ; restaure e_entry
+    ; zéroiser la partie BSS : (p_memsz - p_filesz) octets après la copie
+    ; edi pointe déjà juste après la zone copiée grâce à rep movsb
+    ; si p_memsz == p_filesz, ecx sera 0 et rep stosb ne fait rien
+    pop esi                     ; restaure base ELF AVANT de lire [ebp + 0x14]
+    pop ebp                     ; restaure pointeur program header
+    push ebp                    ; sauvegarde à nouveau pour le pop final
+    push esi
+
+    mov ecx, [ebp + 0x14]       ; p_memsz
+    sub ecx, [ebp + 0x10]       ; p_memsz - p_filesz = taille du BSS
+    xor al, al                  ; valeur à écrire = 0
+    rep stosb                   ; zéroiser ecx octets à partir de [edi]
+
     pop esi                     ; restaure base ELF
+    pop ebp                     ; restaure pointeur program header
+    pop ecx                     ; restaure compteur de boucle
 
 skip_segment:
-    add ebp, 0x20               ; program header suivant (taille = 32 octets)
+    add ebp, 0x20               ; program header suivant (taille fixe = 32 octets)
     dec ecx
     jmp parse_ph_loop
 
 done_parsing:
-    jmp edi                     ; saute vers e_entry -> le kernel prend la main
+    jmp [entry_point]           ; saute vers e_entry -> le kernel prend la main
+
+
+; =====================================================
+; DONNÉES MODE PROTÉGÉ
+; =====================================================
+entry_point dd 0                ; adresse d'entrée du kernel, lue depuis l'ELF header

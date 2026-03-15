@@ -60,7 +60,7 @@ main:
     mov ah, 0x02        ; Fonction 0x02 : Lire des secteurs - EN PREMIER avant tout mov ax
     mov al, 0x02        ; Lire 2 secteurs (marge de sécurité si stage2 grossit)
     mov ch, 0x00        ; CH = cylindre 0 (numéro de piste du disque)
-    mov cl, 0x03    ; secteur 3 en CHS = LBA 2
+    mov cl, 0x03        ; secteur 3 en CHS = LBA 2
     mov dh, 0x00        ; Tête 0 (surface du plateau du disque dur)
     mov dl, [boot_drive] ; Utilise le vrai numéro de disque fourni par le BIOS
 
@@ -73,9 +73,18 @@ main:
     int 0x13            ; Lit les secteurs de stage2 depuis le disque
     jc boot_error       ; Si erreur de lecture (carry flag), on s'arrête
 
+    ; =====================================================
+    ; FAR JUMP VERS STAGE2
+    ; =====================================================
+    ; BUG CORRIGÉ : on saute vers cs=0x0000 / offset=0x7E00
+    ; Si on utilisait cs=0x07E0 / offset=0x0000, cs vaudrait 0x07E0 dans stage2
+    ; et tous les accès [cs:label] seraient décalés : 0x07E0*16 + offset_nasm
+    ; alors que NASM a assemblé stage2 avec org 0x7e00 (base 0x0000)
+    ; -> les labels kernel_name, dap, boot_drive etc. pointeraient au mauvais endroit
+    ; Avec cs=0 / offset=0x7E00 : cs*16 + offset = 0 + 0x7E00 = adresse physique correcte
     db 0xEA             ; opcode far jump
-    dw 0x0000           ; offset
-    dw 0x07E0           ; segment
+    dw 0x7E00           ; offset 0x7E00  <- CORRIGÉ (était 0x0000)
+    dw 0x0000           ; segment cs=0   <- CORRIGÉ (était 0x07E0)
 
 boot_error:
     cli
