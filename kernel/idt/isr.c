@@ -16,7 +16,9 @@ void isr_init() {
 }
 
 void isr_handler(uint32_t num, uint32_t error_code) {
-
+    volatile unsigned short *vga = (unsigned short *) 0xB8000;
+    vga[0] = 0x4F00 | 'E'; 
+    vga[1] = 0x4F00 | ('0' + num);  
 }
 
 

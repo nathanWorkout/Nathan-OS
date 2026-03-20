@@ -8,6 +8,10 @@ void kmain(void) {
     idt_init();
     isr_init();
 
+    volatile int a = 10;
+    volatile int b = 0;
+    volatile int c = a / b;
+
     volatile unsigned short *vga = (unsigned short *)0xB8000;
     vga[0] = 0x2F00 | 'H';  
     vga[1] = 0x2F00 | 'E';
