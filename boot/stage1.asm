@@ -76,12 +76,6 @@ main:
     ; =====================================================
     ; FAR JUMP VERS STAGE2
     ; =====================================================
-    ; BUG CORRIGÉ : on saute vers cs=0x0000 / offset=0x7E00
-    ; Si on utilisait cs=0x07E0 / offset=0x0000, cs vaudrait 0x07E0 dans stage2
-    ; et tous les accès [cs:label] seraient décalés : 0x07E0*16 + offset_nasm
-    ; alors que NASM a assemblé stage2 avec org 0x7e00 (base 0x0000)
-    ; -> les labels kernel_name, dap, boot_drive etc. pointeraient au mauvais endroit
-    ; Avec cs=0 / offset=0x7E00 : cs*16 + offset = 0 + 0x7E00 = adresse physique correcte
     db 0xEA             ; opcode far jump
     dw 0x7E00           ; offset 0x7E00  <- CORRIGÉ (était 0x0000)
     dw 0x0000           ; segment cs=0   <- CORRIGÉ (était 0x07E0)

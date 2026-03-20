@@ -150,17 +150,12 @@ check_entry:
     cmp al, 0x0f        ; 0x0f = attribut LFN (Long File Name), entrée à ignorer car pas au format 8.3
     je next_entry
 
-    ; BUG CORRIGÉ : on sauvegarde si dans current_entry AVANT de le modifier
-    ; current_entry est dans le segment de code (org 0x7e00)
+
     ; ds=0x9000 ici donc on DOIT utiliser cs: pour accéder à nos variables
     mov [cs:current_entry], si  ; sauvegarde le début de l'entrée actuelle
 
     push si             ; sauvegarde si avant la boucle de comparaison
 
-    ; BUG CORRIGÉ : on utilise un registre séparé (bx) comme pointeur dans kernel_name
-    ; au lieu de di seul, car di est utilisé comme adresse absolue mais ds=0x9000
-    ; -> [di] lirait dans le segment 0x9000 = dans le répertoire, pas dans kernel_name
-    ; en préfixant cs: on lit bien dans le segment de code où kernel_name est défini
     mov bx, 0           ; bx = index dans kernel_name (0 à 10)
     mov cx, 11          ; "KERNEL  BIN" = 11 octets au format 8.3
 

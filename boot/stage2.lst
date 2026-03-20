@@ -1,0 +1,524 @@
+     1                                  org 0x7e00
+     2                                  bits 16
+     3                                  
+     4                                  ; en x86, il y a 2 façons de parler au matériel :
+     5                                  ; 1 -> la mémoire ram (mov)
+     6                                  ; 2 -> les ports i/o : bus séparé de la ram, 65536 ports numérotés de 0x0000 à 0xffff, chaque périphérique a ses propres ports
+     7                                  ; on choisit le registre al car le port 0x92 est un port 8 bits (al = moitié basse de ax, 8 bits)
+     8                                  ; activation de la ligne a20 via le port 0x92
+     9                                  ; sans a20 le bit 21 des adresses est bloqué à 0, impossible d'accéder au delà de 1mo de mémoire
+    10                                  
+    11                                      ; sauvegarder dl EN TOUT PREMIER avant que quoi que ce soit ne l'écrase
+    12                                      ; dl contient le numéro de disque transmis par le BIOS -> stage1 -> stage2 (convention)
+    13 00000000 8816[3602]                  mov [boot_drive], dl    ; sauvegarde immédiate, dl intact à ce stade
+    14                                  
+    15                                      ; on remet ds à 0 au début du stage2 car le far jump depuis stage1 a rechargé cs
+    16                                      ; mais ds peut valoir n'importe quoi selon le BIOS
+    17 00000004 31C0                        xor ax, ax
+    18 00000006 8ED8                        mov ds, ax
+    19 00000008 8EC0                        mov es, ax
+    20 0000000A 8ED0                        mov ss, ax
+    21 0000000C BC0070                      mov sp, 0x7000      ; pile temporaire propre pendant le stage2
+    22                                  
+    23 0000000F E492                        in al, 0x92         ; lit l'octet actuel du port 0x92 (system control port a)
+    24 00000011 0C02                        or al, 0b00000010   ; met le bit 1 à 1 pour activer a20
+    25 00000013 24FE                        and al, 0b11111110  ; met le bit 0 à 0 pour éviter le reset machine
+    26 00000015 E692                        out 0x92, al        ; renvoie l'octet modifié au port 0x92
+    27                                  
+    28                                      ; on teste si a20 est bien activé via un test mémoire
+    29                                      ; sans a20 : 0x100000 et 0x000000 pointent au même endroit physique (bit 21 ignoré)
+    30                                      ; avec a20 : 0x100000 et 0x000000 sont deux adresses séparées
+    31                                      ; en mode réel on ne peut pas adresser 0x100000 directement, on utilise fs:0x0010 avec fs=0xffff
+    32                                      ; (0xffff << 4) + 0x0010 = 0xffff0 + 0x10 = 0x100000
+    33                                  
+    34 00000017 BF0005                      mov di, 0x0500              ; adresse safe hors IVT (IVT = 0x0000-0x03FF)
+    35 0000001A C60555                      mov byte [di], 0x55         ; écrit 0x55 à 0x0500
+    36 0000001D B8FFFF                      mov ax, 0xffff
+    37 00000020 8EE0                        mov fs, ax
+    38 00000022 64A01005                    mov al, [fs:0x0510]         ; lit ce qui est à 0x100500 (même décalage)
+    39 00000026 3C55                        cmp al, 0x55                ; si pareil -> a20 inactif, sinon -> a20 actif
+    40 00000028 750F                        jne a20_ok                  ; a20 actif, on continue
+    41                                  
+    42 0000002A B80124                      mov ax, 0x2401      ; fonction pour activer le port a20 via le bios
+    43 0000002D CD15                        int 0x15            ; interruption pour activer a20 via le bios (alternative au port 0x92)
+    44 0000002F 7308                        jnc a20_ok          ; si pas d'erreur, a20 est activé
+    45                                  
+    46                                  a20_fail:
+    47 00000031 C7060050ADDE                mov word [0x5000], 0xDEAD   ; DEBUG : a20_fail
+    48 00000037 FA                          cli
+    49 00000038 F4                          hlt
+    50                                  
+    51                                  a20_ok:
+    52 00000039 C7060250EFBE                mov word [0x5002], 0xBEEF   ; DEBUG : a20_ok atteint
+    53 0000003F FB                          sti                 ; réactive les interruptions pour que int 0x13 fonctionne
+    54                                  
+    55                                  ; =====================================================
+    56                                  ; TEST SUPPORT LBA ÉTENDU (int 0x13 / ah=0x41)
+    57                                  ; =====================================================
+    58                                  ; avant d'utiliser int 0x13/0x42, on vérifie que le BIOS supporte les extensions LBA
+    59                                  ; ah=0x41 : fonction de détection, bx=0x55AA magic requis
+    60                                  ; si supporté : carry=0
+    61                                  ; si non supporté : carry=1 -> on s'arrête
+    62                                  
+    63 00000040 B441                        mov ah, 0x41
+    64 00000042 BBAA55                      mov bx, 0x55AA
+    65 00000045 8A16[3602]                  mov dl, [boot_drive]
+    66 00000049 CD13                        int 0x13
+    67 0000004B C7060450EFBE                mov word [0x5004], 0xBEEF   ; DEBUG : retour int 0x13 lba check
+    68 00000051 A30650                      mov [0x5006], ax            ; DEBUG : ax après lba check
+    69 00000054 7202                        jc lba_not_supported        ; carry=1 -> extensions non supportées
+    70 00000056 EB08                        jmp lba_supported           ; carry=0 -> LBA ok (on ignore bx, QEMU ne le met pas à 0xAA55)
+    71                                  
+    72                                  lba_not_supported:
+    73 00000058 C7060850ADDE                mov word [0x5008], 0xDEAD   ; DEBUG : lba non supporté
+    74 0000005E FA                          cli
+    75 0000005F F4                          hlt                         ; LBA étendu non supporté, arrêt
+    76                                  
+    77                                  lba_supported:
+    78 00000060 C7060A50EFBE                mov word [0x500A], 0xBEEF   ; DEBUG : lba supporté
+    79                                  
+    80                                  ; =====================================================
+    81                                  ; LECTURE DU RÉPERTOIRE RACINE (int 0x13 / ah=0x42)
+    82                                  ; =====================================================
+    83                                  ; On utilise l'adressage LBA étendu qui utilise juste le numéro de secteur direct
+    84                                  ;
+    85                                  ; Le DAP (Disk Address Packet) est une structure de 16 octets en mémoire :
+    86                                  ;   offset 0x00 : taille du DAP (0x10 = 16 octets)
+    87                                  ;   offset 0x01 : réservé (0x00)
+    88                                  ;   offset 0x02 : nombre de secteurs à lire (word)
+    89                                  ;   offset 0x04 : offset du buffer destination (word)
+    90                                  ;   offset 0x06 : segment du buffer destination (word)
+    91                                  ;   offset 0x08 : numéro de secteur LBA (qword, 64 bits)
+    92                                  ;
+    93                                  ; LBA du répertoire racine = fat_start + (fat_count * fat_size)
+    94                                  ; fat_start = reserved_sectors = 32
+    95                                  ; fat_count = 2 (deux copies de la FAT)
+    96                                  ; fat_size  = 512 secteurs par FAT
+    97                                  ; lba_root  = 32 + 2 * 512 = 1056
+    98                                  
+    99 00000066 C706[1502]1000              mov word [dap],        0x0010   ; taille du DAP = 16 octets
+   100 0000006C C706[1702]0100              mov word [dap + 0x02], 0x0001   ; lire 1 secteur
+   101 00000072 C706[1902]0000              mov word [dap + 0x04], 0x0000   ; offset destination = 0x0000
+   102 00000078 C706[1B02]0009              mov word [dap + 0x06], 0x0900   ; segment destination = 0x0900 -> adresse physique 0x9000
+   103 0000007E 66C706[1D02]200400-         mov dword [dap + 0x08], 1056    ; LBA bas : secteur 1056 (répertoire racine)
+   103 00000086 00                 
+   104 00000087 66C706[2102]000000-         mov dword [dap + 0x0C], 0       ; LBA haut : 0 (disque < 2To)
+   104 0000008F 00                 
+   105                                  
+   106                                      ; DEBUG : snapshot du DAP avant int 0x13 racine -> 0x5100
+   107 00000090 C7060051EFBE                mov word [0x5100], 0xBEEF
+   108 00000096 A1[1502]                    mov ax, [dap]
+   109 00000099 A31051                      mov [0x5110], ax
+   110 0000009C A1[1702]                    mov ax, [dap + 0x02]
+   111 0000009F A31251                      mov [0x5112], ax
+   112 000000A2 A1[1902]                    mov ax, [dap + 0x04]
+   113 000000A5 A31451                      mov [0x5114], ax
+   114 000000A8 A1[1B02]                    mov ax, [dap + 0x06]
+   115 000000AB A31651                      mov [0x5116], ax
+   116 000000AE 66A1[1D02]                  mov eax, [dap + 0x08]
+   117 000000B2 66A31851                    mov [0x5118], eax
+   118 000000B6 66A1[2102]                  mov eax, [dap + 0x0C]
+   119 000000BA 66A31C51                    mov [0x511C], eax
+   120                                  
+   121 000000BE B442                        mov ah, 0x42        ; fonction 0x42 : lire via LBA étendu
+   122 000000C0 8A16[3602]                  mov dl, [boot_drive]
+   123 000000C4 BE[1502]                    mov si, dap         ; ds:si pointe sur le DAP
+   124 000000C7 CD13                        int 0x13
+   125                                  
+   126 000000C9 A30251                      mov [0x5102], ax                ; ax après int 0x13 racine
+   127 000000CC C7060451ADDE                mov word [0x5104], 0xDEAD
+   128 000000D2 0F823D01                    jc disk_error
+   129 000000D6 C70606513412                mov word [0x5106], 0x1234       ; carry=0, lecture ok
+   130                                  
+   131                                      ; on pointe ds sur 0x9000 pour lire les entrées du répertoire
+   132 000000DC B80090                      mov ax, 0x9000
+   133 000000DF 8ED8                        mov ds, ax
+   134 000000E1 BE0000                      mov si, 0x0000      ; si pointe sur la première entrée du répertoire racine
+   135                                  
+   136                                  check_entry:
+   137 000000E4 8A04                        mov al, [si]
+   138 000000E6 3C00                        cmp al, 0x00        ; premier octet = 0 -> fin du répertoire, plus aucune entrée après
+   139 000000E8 742D                        je dir_end
+   140 000000EA 3CE5                        cmp al, 0xe5        ; premier octet = 0xe5 -> entrée supprimée, on l'ignore
+   141 000000EC 7424                        je next_entry
+   142 000000EE 8A440B                      mov al, [si + 11]   ; offset 11 = octet d'attributs de l'entrée
+   143 000000F1 3C0F                        cmp al, 0x0f        ; 0x0f = attribut LFN (Long File Name), entrée à ignorer car pas au format 8.3
+   144 000000F3 741D                        je next_entry
+   145 000000F5 BF[2502]                    mov di, kernel_name ; adresse du nom de fichier attendu
+   146 000000F8 2E8936[3002]                mov [cs:current_entry], si  ; sauvegarde le début de l'entrée actuelle (cs: car ds=0x9000)
+   147 000000FD 56                          push si             ; sauvegarde si avant read_name qui va l'incrémenter
+   148 000000FE B90B00                      mov cx, 11          ; "KERNEL  BIN" = 11 octets au format 8.3
+   149                                  
+   150                                  read_name:
+   151 00000101 8A04                        mov al, [si]        ; lire un octet du secteur (ds=0x9000)
+   152 00000103 2E8A1D                      mov bl, [cs:di]     ; lire un octet du nom attendu (cs: car kernel_name est dans le code stage2)
+   153 00000106 38D8                        cmp al, bl
+   154 00000108 7507                        jne name_mismatch   ; les octets diffèrent : ce n'est pas le bon fichier
+   155 0000010A 46                          inc si
+   156 0000010B 47                          inc di
+   157 0000010C E2F3                        loop read_name      ; répéter pour les 11 octets
+   158 0000010E 5E                          pop si              ; les 11 octets correspondent : dépile proprement
+   159 0000010F EB08                        jmp kernel_found
+   160                                  
+   161                                  name_mismatch:
+   162 00000111 5E                          pop si              ; restaure si avant de passer à l'entrée suivante
+   163                                  
+   164                                  next_entry:
+   165 00000112 83C620                      add si, 32          ; chaque entrée de répertoire fait 32 octets
+   166 00000115 EBCD                        jmp check_entry
+   167                                  
+   168                                  dir_end:
+   169 00000117 FA                          cli
+   170 00000118 F4                          hlt                 ; kernel.bin introuvable, arrêt
+   171                                  
+   172                                  kernel_found:
+   173 00000119 2E8B36[3002]                mov si, [cs:current_entry]  ; revenir au début de l'entrée du kernel (cs: car ds=0x9000)
+   174 0000011E 6631DB                      xor ebx, ebx
+   175 00000121 8B5C14                      mov bx, [si + 0x14]     ; cluster haut (16 bits, offset 0x14 dans l'entrée FAT32)
+   176 00000124 66C1E310                    shl ebx, 16             ; décale vers le haut pour former les 32 bits
+   177 00000128 8B5C1A                      mov bx, [si + 0x1a]     ; cluster bas (16 bits, offset 0x1a dans l'entrée FAT32)
+   178                                      ; ebx contient maintenant le numéro de cluster complet sur 32 bits
+   179                                  
+   180                                      ; destination de chargement : 0x20000 en mémoire physique
+   181                                      ; on utilise un pointeur 32 bits stocké en mémoire car on est encore en 16 bits
+   182                                      ; on ne peut pas utiliser de registre 32 bits comme pointeur directement en mode réel
+   183 0000012B 2E66C706[3202]0000-         mov dword [cs:load_dest], 0x20000
+   183 00000133 0200               
+   184                                  
+   185                                  ; =====================================================
+   186                                  ; BOUCLE DE CHARGEMENT : SUIT LA CHAÎNE FAT ET CHARGE CHAQUE CLUSTER
+   187                                  ; =====================================================
+   188                                  ; on reste EN MODE RÉEL pendant toute cette boucle
+   189                                  ; int 0x13 ne fonctionne plus une fois en mode protégé
+   190                                  ; algo :
+   191                                  ;   1. calculer le secteur FAT du cluster courant (ebx)
+   192                                  ;   2. lire le secteur FAT -> buffer 0x10000
+   193                                  ;   3. lire l'entrée FAT à l'offset calculé
+   194                                  ;   4. calculer le LBA du cluster courant et charger ses 8 secteurs -> [load_dest]
+   195                                  ;   5. avancer load_dest de 8*512 = 4096 octets
+   196                                  ;   6. si l'entrée FAT >= 0x0FFFFFF8 -> dernier cluster, on arrête
+   197                                  ;   7. sinon ebx = entrée FAT (prochain cluster), retour en 1
+   198                                  
+   199                                  load_next_cluster:
+   200                                  
+   201                                      ; étape 1 : calculer secteur FAT et offset pour le cluster ebx
+   202                                      ; offset dans la FAT (en octets) = cluster * 4 (chaque entrée FAT32 = 4 octets)
+   203                                      ; secteur FAT = fat_start + (offset / 512)
+   204                                      ; offset dans le secteur = offset % 512
+   205                                      ; fat_start = 32 (reserved_sectors du BPB)
+   206                                  
+   207                                      ; ds peut valoir 0x9000 ici, on remet à 0 pour accéder au DAP
+   208 00000135 31C9                        xor cx, cx
+   209 00000137 8ED9                        mov ds, cx
+   210                                  
+   211 00000139 6689D8                      mov eax, ebx        ; numéro de cluster courant
+   212 0000013C 66C1E002                    shl eax, 2          ; multiplie par 4 : offset en octets dans la FAT
+   213 00000140 6631D2                      xor edx, edx
+   214 00000143 66B900020000                mov ecx, 512        ; 512 octets par secteur
+   215 00000149 66F7F1                      div ecx             ; eax = secteur relatif dans la FAT, edx = offset dans ce secteur
+   216 0000014C 6683C020                    add eax, 32         ; ajoute fat_start -> LBA réel du secteur FAT
+   217                                  
+   218 00000150 6652                        push edx            ; sauvegarde l'offset dans le secteur FAT (on en aura besoin après la lecture)
+   219                                  
+   220                                      ; étape 2 : lire le secteur FAT
+   221                                      ; IMPORTANT : buffer à 0x1000:0x0000 = adresse physique 0x10000
+   222                                      ; on évite 0x0800:0x0000 = 0x8000 qui chevauche le code stage2 (chargé à 0x7e00, ~600 octets)
+   223 00000152 66A3[1D02]                  mov dword [dap + 0x08], eax     ; LBA du secteur FAT
+   224 00000156 66C706[2102]000000-         mov dword [dap + 0x0C], 0
+   224 0000015E 00                 
+   225 0000015F C706[1702]0100              mov word  [dap + 0x02], 1       ; 1 secteur
+   226 00000165 C706[1902]0000              mov word  [dap + 0x04], 0x0000  ; offset destination = 0
+   227 0000016B C706[1B02]0010              mov word  [dap + 0x06], 0x1000  ; segment 0x1000 -> adresse physique 0x10000
+   228                                  
+   229 00000171 B442                        mov ah, 0x42
+   230 00000173 8A16[3602]                  mov dl, [boot_drive]
+   231 00000177 BE[1502]                    mov si, dap
+   232 0000017A CD13                        int 0x13
+   233 0000017C 0F829300                    jc disk_error
+   234                                  
+   235                                      ; étape 3 : lire l'entrée FAT à l'offset edx
+   236                                      ; le secteur FAT est maintenant à 0x10000, on utilise es=0x1000
+   237 00000180 665E                        pop esi             ; récupère l'offset dans le secteur FAT
+   238 00000182 B80010                      mov ax, 0x1000      ; segment 0x1000 -> adresse physique 0x10000
+   239 00000185 8EC0                        mov es, ax
+   240 00000187 2667668B06                  mov eax, [es:esi]   ; lit les 4 octets de l'entrée FAT32
+   241 0000018C 6625FFFFFF0F                and eax, 0x0fffffff ; masque les 4 bits hauts réservés par FAT32
+   242                                  
+   243                                      ; étape 4 : charger les données du cluster courant
+   244                                      ; lba = data_start + (cluster - 2) * sectors_per_cluster
+   245                                      ; data_start = reserved + fat_count * fat_size = 32 + 2*512 = 1056
+   246                                      ; sectors_per_cluster = 8
+   247                                  
+   248 00000192 6650                        push eax            ; sauvegarde l'entrée FAT (prochain cluster ou marqueur fin)
+   249                                  
+   250 00000194 6689D8                      mov eax, ebx        ; cluster courant
+   251 00000197 6683E802                    sub eax, 2          ; les clusters commencent à 2 en FAT32
+   252 0000019B 66B908000000                mov ecx, 8          ; sectors_per_cluster = 8
+   253 000001A1 66F7E1                      mul ecx
+   254 000001A4 660520040000                add eax, 1056       ; data_start
+   255                                  
+   256                                      ; charger 8 secteurs vers [load_dest]
+   257                                      ; load_dest contient une adresse 32 bits (ex: 0x20000, 0x21000, 0x22000...)
+   258                                      ; en mode réel on ne peut pas mettre une adresse 32 bits dans es directement
+   259                                      ; on décompose : segment = load_dest >> 4, offset = load_dest & 0xF
+   260                                      ; pour nos adresses (multiples de 0x1000) : segment = load_dest >> 4, offset = 0
+   261                                  
+   262 000001AA 668B1E[3202]                mov ebx, [load_dest]    ; adresse physique destination
+   263 000001AF 66C1EB04                    shr ebx, 4              ; convertit en segment (adresse / 16)
+   264                                  
+   265 000001B3 31C9                        xor cx, cx
+   266 000001B5 8ED9                        mov ds, cx              ; ds=0 pour accéder au DAP
+   267                                  
+   268 000001B7 66A3[1D02]                  mov dword [dap + 0x08], eax     ; LBA du premier secteur du cluster
+   269 000001BB 66C706[2102]000000-         mov dword [dap + 0x0C], 0
+   269 000001C3 00                 
+   270 000001C4 C706[1702]0800              mov word  [dap + 0x02], 8       ; 8 secteurs = 1 cluster = 4096 octets
+   271 000001CA C706[1902]0000              mov word  [dap + 0x04], 0x0000  ; offset = 0
+   272 000001D0 891E[1B02]                  mov [dap + 0x06], bx            ; segment destination calculé
+   273                                  
+   274 000001D4 B442                        mov ah, 0x42
+   275 000001D6 8A16[3602]                  mov dl, [boot_drive]
+   276 000001DA BE[1502]                    mov si, dap
+   277 000001DD CD13                        int 0x13
+   278 000001DF 7232                        jc disk_error
+   279                                  
+   280                                      ; étape 5 : avancer le pointeur de destination
+   281 000001E1 668106[3202]001000-         add dword [load_dest], 0x1000   ; 8 secteurs * 512 = 4096 = 0x1000 octets
+   281 000001E9 00                 
+   282                                  
+   283                                      ; étape 6 et 7 : vérifier si c'est le dernier cluster
+   284 000001EA 6658                        pop eax             ; récupère l'entrée FAT sauvegardée
+   285 000001EC 663DF8FFFF0F                cmp eax, 0x0ffffff8
+   286 000001F2 7306                        jae done_loading    ; >= 0x0ffffff8 -> dernier cluster, tout le kernel est chargé
+   287                                  
+   288 000001F4 6689C3                      mov ebx, eax        ; sinon : ebx = prochain cluster
+   289 000001F7 E93BFF                      jmp load_next_cluster
+   290                                  
+   291                                  done_loading:
+   292                                  
+   293                                      ; =====================================================
+   294                                      ; BASCULE EN MODE PROTÉGÉ 32 BITS
+   295                                      ; =====================================================
+   296                                      ; TOUTES les lectures disque sont finies ici
+   297                                      ; int 0x13 ne fonctionnerait plus après cette bascule
+   298                                  
+   299 000001FA FA                          cli                 ; désactive les interruptions avant la bascule (obligatoire)
+   300                                  
+   301 000001FB 31C0                        xor ax, ax
+   302 000001FD 8ED8                        mov ds, ax          ; ds=0 AVANT lgdt, sinon lgdt lit gdtd au mauvais endroit
+   303                                  
+   304 000001FF 0F0116[5F02]                lgdt [gdtd]         ; charge la GDT dans le registre GDTR du CPU
+   305                                  
+   306 00000204 0F20C0                      mov eax, cr0
+   307 00000207 6683C801                    or eax, 1           ; bit PE (Protection Enable) = 1 -> active le mode protégé
+   308 0000020B 0F22C0                      mov cr0, eax
+   309                                  
+   310 0000020E EA[6502]0800                jmp 0x08:protected_mode ; far jump qui flush le pipeline et recharge cs avec le sélecteur 0x08
+   311                                  
+   312                                  disk_error:
+   313 00000213 FA                          cli
+   314 00000214 F4                          hlt
+   315                                  
+   316                                  ; =====================================================
+   317                                  ; DONNÉES 16 BITS
+   318                                  ; =====================================================
+   319                                  
+   320                                  ; DAP (Disk Address Packet) pour int 0x13/0x42
+   321                                  ; structure de 16 octets utilisée par le LBA étendu
+   322                                  dap:
+   323 00000215 10                          db 0x10         ; taille du DAP
+   324 00000216 00                          db 0x00         ; réservé
+   325 00000217 0000                        dw 0x0000       ; nombre de secteurs
+   326 00000219 0000                        dw 0x0000       ; offset destination
+   327 0000021B 0000                        dw 0x0000       ; segment destination
+   328 0000021D 00000000                    dd 0x00000000   ; LBA bas
+   329 00000221 00000000                    dd 0x00000000   ; LBA haut
+   330                                  
+   331                                  ; le format FAT32 utilise des noms de 11 octets : 8 pour le nom + 3 pour l'extension
+   332 00000225 4B45524E454C202042-     kernel_name db "KERNEL  BIN"    ; en majuscules : FAT32 stocke les noms en majuscules
+   332 0000022E 494E               
+   333 00000230 0000                    current_entry dw 0              ; sauvegarde le début de l'entrée courante du répertoire
+   334 00000232 00000200                load_dest dd 0x20000            ; adresse physique courante de chargement du kernel (avance cluster par cluster)
+   335 00000236 00                      boot_drive db 0                 ; numéro de disque transmis par le BIOS, sauvegardé en tout premier
+   336                                  
+   337                                  ; =====================================================
+   338                                  ; GDT (Global Descriptor Table)
+   339                                  ; =====================================================
+   340                                  ; le cpu lit une entrée dans la gdt qui contient :
+   341                                  ; base address, limit, type (code/data), privilege level, flags
+   342                                  ; la gdt est indispensable pour le mode protégé
+   343                                  
+   344                                  gdt_start:
+   345                                  
+   346 00000237 0000000000000000        gdt_null: dq 0x0000000000000000 ; entrée nulle obligatoire (le cpu plante si on l'oublie)
+   347                                  
+   348                                  ; 0x08 - ring 0 (segment code kernel)
+   349                                  gdt_code:
+   350 0000023F FFFF                        dw 0xffff        ; limit low
+   351 00000241 0000                        dw 0x0000        ; base low
+   352 00000243 00                          db 0x00          ; base middle
+   353 00000244 9A                          db 10011010b     ; access byte (présent, ring 0, code, exécutable, readable)
+   354 00000245 CF                          db 11001111b     ; flags (32 bits, granularité 4ko) + limit high
+   355 00000246 00                          db 0x00          ; base high
+   356                                  
+   357                                  ; 0x10 - ring 0 (segment data kernel)
+   358                                  gdt_data:
+   359 00000247 FFFF                        dw 0xffff
+   360 00000249 0000                        dw 0x0000
+   361 0000024B 00                          db 0x00
+   362 0000024C 92                          db 10010010b     ; access byte (présent, ring 0, data, writable)
+   363 0000024D CF                          db 11001111b
+   364 0000024E 00                          db 0x00
+   365                                  
+   366                                  ; 0x18 - ring 3 (segment code userland)
+   367                                  gdt_user_code:
+   368 0000024F FFFF                        dw 0xffff        ; limit low
+   369 00000251 0000                        dw 0x0000        ; base low
+   370 00000253 00                          db 0x00          ; base middle
+   371 00000254 FA                          db 11111010b     ; access byte (ring 3 : bits 5-6 = 11)
+   372 00000255 CF                          db 11001111b     ; flags + limit high
+   373 00000256 00                          db 0x00          ; base high
+   374                                  
+   375                                  ; 0x20 - ring 3 (segment data userland)
+   376                                  gdt_user_data:
+   377 00000257 FFFF                        dw 0xffff
+   378 00000259 0000                        dw 0x0000
+   379 0000025B 00                          db 0x00
+   380 0000025C F2                          db 11110010b     ; access byte (ring 3 : bits 5-6 = 11)
+   381 0000025D CF                          db 11001111b     ; flags + limit high
+   382 0000025E 00                          db 0x00          ; base high
+   383                                  
+   384                                  gdt_end:
+   385                                  
+   386                                  ; le cpu attend :
+   387                                  ; 16 bits : taille - 1
+   388                                  ; 32 bits : adresse linéaire de la GDT
+   389                                  gdtd:
+   390 0000025F 2700                        dw gdt_end - gdt_start - 1
+   391 00000261 [37020000]                  dd gdt_start
+   392                                  
+   393                                  ; 10011010b     décomposition de l'access byte code ring 0
+   394                                  ; 1    -> présent
+   395                                  ; 00   -> ring 0
+   396                                  ; 1    -> code/data (descriptor type)
+   397                                  ; 1    -> executable (code)
+   398                                  ; 0    -> non-conforming
+   399                                  ; 1    -> readable
+   400                                  ; 0    -> accessed (mis à 1 par le cpu automatiquement)
+   401                                  
+   402                                  [bits 32]
+   403                                  ; on est enfin en 32 bits !
+   404                                  
+   405                                  protected_mode:
+   406                                  
+   407                                      ; recharger les segments avec le sélecteur data ring 0 (0x10)
+   408 00000265 66B81000                    mov ax, 0x10
+   409 00000269 8ED8                        mov ds, ax
+   410 0000026B 8EC0                        mov es, ax
+   411 0000026D 8EE0                        mov fs, ax
+   412 0000026F 8EE8                        mov gs, ax
+   413 00000271 8ED0                        mov ss, ax
+   414                                  
+   415 00000273 BC00000900                  mov esp, 0x90000    ; pile en mode protégé à une adresse propre
+   416                                  
+   417                                  ; =====================================================
+   418                                  ; PARSE ELF ET JUMP VERS LE KERNEL
+   419                                  ; =====================================================
+   420                                  ; kernel.bin est un ELF32 chargé à 0x20000
+   421                                  ; on lit les program headers pour copier chaque segment PT_LOAD
+   422                                  ; à son adresse virtuelle (p_vaddr), puis on saute sur e_entry
+   423                                  ;
+   424                                  ; structure d'un ELF32 header (les offsets qui nous intéressent) :
+   425                                  ;   0x00 : magic  (4 octets : 0x7f 'E' 'L' 'F')
+   426                                  ;   0x18 : e_entry  (4 octets : adresse d'entrée du kernel)
+   427                                  ;   0x1c : e_phoff  (4 octets : offset de la table des program headers)
+   428                                  ;   0x2c : e_phnum  (2 octets : nombre de programme headers)
+   429                                  ;
+   430                                  ; structure d'un program header ELF32 (32 octets) :
+   431                                  ;   0x00 : p_type   (4 octets : type du segment, PT_LOAD = 1)
+   432                                  ;   0x04 : p_offset (4 octets : offset du segment dans le fichier ELF)
+   433                                  ;   0x08 : p_vaddr  (4 octets : adresse virtuelle de destination)
+   434                                  ;   0x0c : p_paddr  (4 octets : adresse physique, ignorée ici)
+   435                                  ;   0x10 : p_filesz (4 octets : taille du segment dans le fichier)
+   436                                  ;   0x14 : p_memsz  (4 octets : taille en mémoire, peut être > filesz pour le BSS)
+   437                                  ;
+   438                                  ; algo :
+   439                                  ; 1. esi = 0x20000  (début du fichier ELF en mémoire)
+   440                                  ; 2. lire e_entry  à [esi + 0x18] -> sauvegarder dans [entry_point]
+   441                                  ; 3. lire e_phoff  à [esi + 0x1c] -> ebp = esi + e_phoff
+   442                                  ; 4. lire e_phnum  à [esi + 0x2c] -> compteur dans ecx
+   443                                  ; 5. boucle pour chaque segment :
+   444                                  ;    lire p_type   à [ebp + 0x00]
+   445                                  ;    si p_type != 1 (PT_LOAD) -> skip
+   446                                  ;    lire p_offset à [ebp + 0x04]
+   447                                  ;    lire p_vaddr  à [ebp + 0x08]
+   448                                  ;    lire p_filesz à [ebp + 0x10]
+   449                                  ;    copier p_filesz octets de (0x20000 + p_offset) vers p_vaddr
+   450                                  ;    zéroiser (p_memsz - p_filesz) octets après (BSS)
+   451                                  ;    ebp += 0x20 (taille d'un program header = 32 octets)
+   452                                  ; 6. jmp [entry_point]
+   453                                  
+   454 00000278 BE00000200                  mov esi, 0x20000            ; début du fichier ELF en mémoire
+   455                                  
+   456 0000027D 8B4618                      mov eax, [esi + 0x18]       ; e_entry : adresse d'entrée du kernel
+   457 00000280 A3[CF020000]                mov [entry_point], eax      ; sauvegarde dans une variable mémoire
+   458                                                                    ; on n'utilise plus edi pour ça -> évite les conflits avec rep movsb
+   459                                  
+   460 00000285 8B461C                      mov eax, [esi + 0x1c]       ; e_phoff : offset de la table des program headers
+   461 00000288 01F0                        add eax, esi                ; adresse absolue du premier program header
+   462 0000028A 89C5                        mov ebp, eax                ; ebp = pointeur sur le program header courant
+   463                                  
+   464 0000028C 0FB74E2C                    movzx ecx, word [esi + 0x2c] ; e_phnum : nombre de segments (champ 16 bits -> 32 bits)
+   465                                  
+   466                                  parse_ph_loop:
+   467 00000290 83F900                      cmp ecx, 0
+   468 00000293 7434                        je done_parsing             ; plus de segments -> on saute vers le kernel
+   469                                  
+   470 00000295 8B4500                      mov eax, [ebp + 0x00]       ; p_type
+   471 00000298 83F801                      cmp eax, 1                  ; PT_LOAD = 1, seul type à copier
+   472 0000029B 7526                        jne skip_segment
+   473                                  
+   474                                      ; segment PT_LOAD : copier de (0x20000 + p_offset) vers p_vaddr
+   475 0000029D 51                          push ecx                    ; sauvegarde le compteur de boucle (rep movsb écrase ecx)
+   476 0000029E 55                          push ebp                    ; sauvegarde le pointeur sur le program header courant
+   477 0000029F 56                          push esi                    ; sauvegarde la base ELF (rep movsb écrase esi)
+   478                                  
+   479 000002A0 8B4504                      mov eax, [ebp + 0x04]       ; p_offset : offset du segment dans le fichier ELF
+   480 000002A3 0500000200                  add eax, 0x20000            ; adresse source = base ELF + p_offset
+   481 000002A8 89C6                        mov esi, eax                ; esi = source pour rep movsb
+   482                                  
+   483 000002AA 8B7D08                      mov edi, [ebp + 0x08]       ; p_vaddr : adresse destination pour rep movsb
+   484                                  
+   485 000002AD 8B4D10                      mov ecx, [ebp + 0x10]       ; p_filesz : nombre d'octets à copier depuis le fichier
+   486 000002B0 F3A4                        rep movsb                   ; copie ecx octets de [esi] vers [edi], incrémente esi/edi
+   487                                  
+   488                                      ; zéroiser la partie BSS : (p_memsz - p_filesz) octets après la copie
+   489                                      ; edi pointe déjà juste après la zone copiée grâce à rep movsb
+   490                                      ; si p_memsz == p_filesz, ecx sera 0 et rep stosb ne fait rien
+   491 000002B2 5E                          pop esi                     ; restaure base ELF AVANT de lire [ebp + 0x14]
+   492 000002B3 5D                          pop ebp                     ; restaure pointeur program header
+   493 000002B4 55                          push ebp                    ; sauvegarde à nouveau pour le pop final
+   494 000002B5 56                          push esi
+   495                                  
+   496 000002B6 8B4D14                      mov ecx, [ebp + 0x14]       ; p_memsz
+   497 000002B9 2B4D10                      sub ecx, [ebp + 0x10]       ; p_memsz - p_filesz = taille du BSS
+   498 000002BC 30C0                        xor al, al                  ; valeur à écrire = 0
+   499 000002BE F3AA                        rep stosb                   ; zéroiser ecx octets à partir de [edi]
+   500                                  
+   501 000002C0 5E                          pop esi                     ; restaure base ELF
+   502 000002C1 5D                          pop ebp                     ; restaure pointeur program header
+   503 000002C2 59                          pop ecx                     ; restaure compteur de boucle
+   504                                  
+   505                                  skip_segment:
+   506 000002C3 83C520                      add ebp, 0x20               ; program header suivant (taille fixe = 32 octets)
+   507 000002C6 49                          dec ecx
+   508 000002C7 EBC7                        jmp parse_ph_loop
+   509                                  
+   510                                  done_parsing:
+   511 000002C9 FF25[CF020000]              jmp [entry_point]           ; saute vers e_entry -> le kernel prend la main
+   512                                  
+   513                                  
+   514                                  ; =====================================================
+   515                                  ; DONNÉES MODE PROTÉGÉ
+   516                                  ; =====================================================
+   517 000002CF 00000000                entry_point dd 0                ; adresse d'entrée du kernel, lue depuis l'ELF header

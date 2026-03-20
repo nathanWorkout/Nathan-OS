@@ -112,12 +112,12 @@ OS From Scratch (Nathan OS):
             ☐ Initialiser ds, es, fs, gs, ss avec le sélecteur 0x10
             ☐ Objectif : CPU en mode protégé 32 bits, GDB → cs == 0x08, ds == 0x10
 
-        ☐ Copier le kernel vers 0x100000
+        ✔ Copier le kernel vers 0x100000 @started(26-03-15 17:55) @done(26-03-15 17:55) @lasted(40s)
             ☐ Implémenter une routine memcpy 32 bits
             ☐ Copier de 0x10000 vers 0x100000 (taille = clusters lus * taille cluster)
             ☐ Vérifier : GDB → inspecter 0x100000, les bons octets sont là
 
-        ☐ Sauter vers le kernel
+        ✔ Sauter vers le kernel; réserve 16Ko pour la pile kernel dans la section BSS @started(26-03-15 17:55) @done(26-03-15 17:55) @lasted(43s)
             ☐ Initialiser esp à 0x90000 (pile temporaire avant kernel stack)
             ☐ Jump vers 0x100000
             ☐ Objectif : kmain s'exécute, QEMU ne reboot pas en boucle
@@ -142,7 +142,7 @@ OS From Scratch (Nathan OS):
   PHASE 1 — KERNEL MINIMAL
   ══════════════════════════════════════════════════════════════════
 
-  Initialisation de la pile kernel:
+  ✔ Initialisation de la pile kernel: @done(26-03-15 17:55)
     ☐ Initialiser esp dans l'entry point assembleur (AVANT call kmain)
         ☐ Définir kernel_stack (8Ko) dans le linker script
         ☐ mov esp, kernel_stack_top dans start.asm
