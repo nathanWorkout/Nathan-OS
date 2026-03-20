@@ -8,7 +8,7 @@ AS = nasm
 LD = i686-elf-ld
 
 # Compilation flags
-CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I kernel/idt
 ASFLAGS = -f elf32
 LDFLAGS = -nostdlib
 
@@ -22,11 +22,12 @@ IMG     = boot.img
 
 # Source files
 C_SRCS   = $(wildcard $(KERNEL)/*.c) \
+            $(wildcard $(KERNEL)/idt/*.c) \
             $(wildcard $(DRIVERS)/*.c) \
             $(wildcard $(LIB)/*.c)
 
-# entry.asm exclu du wildcard car linké explicitement en premier
-ASM_SRCS = $(filter-out $(KERNEL)/entry.asm, $(wildcard $(KERNEL)/*.asm))
+ASM_SRCS = $(filter-out $(KERNEL)/entry.asm, $(wildcard $(KERNEL)/*.asm)) \
+            $(wildcard $(KERNEL)/idt/*.asm)
 
 # Object files
 C_OBJS   = $(patsubst %.c,   $(BUILD)/%.o, $(notdir $(C_SRCS)))
@@ -38,7 +39,6 @@ ASM_OBJS = $(patsubst %.asm, $(BUILD)/%.o, $(notdir $(ASM_SRCS)))
 
 all: $(BUILD)/kernel.bin
 
-# entry.o en premier pour que _start soit au bon offset dans kernel.bin
 $(BUILD)/kernel.bin: $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS) linker.ld
 	$(LD) -T linker.ld -o $@ $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS) $(LDFLAGS)
 
@@ -48,6 +48,9 @@ $(BUILD)/entry.o: $(KERNEL)/entry.asm
 $(BUILD)/%.o: $(KERNEL)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/%.o: $(KERNEL)/idt/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/%.o: $(DRIVERS)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -55,6 +58,9 @@ $(BUILD)/%.o: $(LIB)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/%.o: $(KERNEL)/%.asm
+	$(AS) $(ASFLAGS) $< -o $@
+
+$(BUILD)/%.o: $(KERNEL)/idt/%.asm
 	$(AS) $(ASFLAGS) $< -o $@
 
 # ==================================================
@@ -69,22 +75,6 @@ $(BUILD)/stage2.bin: $(BOOT)/stage2.asm
 
 # ==================================================
 # IMAGE DISQUE
-#
-# ORDRE CRITIQUE :
-#   1. dd zero        -> image vierge
-#   2. mkfs.fat       -> structure FAT32 (réserve secteurs 0-31)
-#                        secteur 0 = boot sector
-#                        secteur 1 = FSInfo
-#                        secteur 6 = backup boot sector
-#                        secteurs 2-5, 8-31 = libres (mis à 0)
-#   3. dd stage1      -> secteur 0  (écrase le boot sector FAT32)
-#   4. dd stage2      -> secteur 2  (APRÈS mkfs.fat sinon écrasé)
-#   5. mcopy kernel   -> copie kernel.bin dans la partition FAT32
-#
-# stage2 au secteur 2 (LBA 2, CHS 0/0/3) car :
-#   - secteur 0 = stage1 (MBR)
-#   - secteur 1 = FSInfo (utilisé par FAT32)
-#   - secteur 2 = libre, non écrasé par mkfs.fat avec -R 32
 # ==================================================
 
 img: $(BUILD)/stage1.bin $(BUILD)/stage2.bin $(BUILD)/kernel.bin
@@ -107,36 +97,3 @@ clean:
 	rm -f $(BUILD)/*.o $(BUILD)/*.bin $(IMG)
 
 .PHONY: all img run-img debug clean
-
-# ==================================================
-# COMMANDES
-# ==================================================
-# make              -> compile le kernel
-# make img          -> compile tout + crée boot.img
-# make run-img      -> lance QEMU (sans recompiler)
-# make debug        -> lance QEMU en attente de GDB (sans recompiler)
-# make clean        -> supprime tous les fichiers compilés
-#
-# WORKFLOW NORMAL :
-#   make clean && make img && make run-img
-#
-# VÉRIFICATIONS :
-#   hexdump -C boot.img | grep -A2 "00000400"
-#     -> doit afficher : 31 c0 8e d8 8e c0 8e d0  (stage2 ok)
-#   hexdump -C boot.img | grep -A2 "00000200"
-#     -> doit afficher : 52 52 61 41  (FSInfo - normal, c'est FAT32)
-#
-# DEBUG GDB (dans un 2ème terminal après make debug) :
-#   gdb -ex "target remote localhost:1234"
-#   set pagination off
-#   set architecture i8086
-#   break *0x7c00       -> breakpoint début stage1
-#   break *0x7e00       -> breakpoint début stage2
-#   break *0x100000     -> breakpoint début kernel
-#   c                   -> continuer jusqu'au prochain breakpoint
-#   si                  -> step instruction (entre dans les appels)
-#   ni                  -> next instruction (saute les appels)
-#   x/30i 0x7c00        -> désassembler 30 instructions
-#   info registers      -> afficher tous les registres
-#   p/x $eax            -> afficher un registre en hexa
-# ==================================================

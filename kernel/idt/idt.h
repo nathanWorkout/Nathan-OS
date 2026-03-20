@@ -18,4 +18,7 @@ typedef struct __attribute__((packed)) {
 
 extern idt_entry_t idt[256]; // _t est une convenssion qui évite d'écrire struct a chaque fois
 
+void idt_set_entry(uint8_t num, uint32_t base, uint16_t selector, uint8_t flags);
+void idt_init();
+
 #endif
