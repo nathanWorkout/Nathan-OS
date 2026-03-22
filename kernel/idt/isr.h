@@ -36,7 +36,7 @@ extern void isr29();
 extern void isr30();
 extern void isr31();
 
-void isr_handler(uint32_t num, uint32_t error_code);
+void isr_handler(uint32_t num, uint32_t error_code, uint32_t eip);
 void isr_init();
 
 #endif

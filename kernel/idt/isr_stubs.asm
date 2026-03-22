@@ -1,5 +1,4 @@
 extern isr_handler
-
 global isr0, isr1, isr2, isr3, isr4, isr5, isr6, isr7
 global isr8, isr9, isr10, isr11, isr12, isr13, isr14, isr15
 global isr16, isr17, isr18, isr19, isr20, isr21, isr22, isr23
@@ -8,7 +7,6 @@ global isr_common
 
 ; La c'est inversé mais c'est normal car lors de la réception en c, 
 ; les arguments sont inversé c'est le dernier en assembelur qui est apssé en premier
-
 isr0:
    push 0        ; Faux error code
    push 0        ; Le numéro
@@ -164,10 +162,20 @@ isr31:
 isr_common:
    pushad                ; Sauvegarde les registre
    cld                   ; Remet les flags direction à 0
-   push dword [esp+36]   ; error_code 
-   push dword [esp+36]   ; num 
+
+   ; pile à ce stade :
+   ; esp+0  à esp+28 = pushad (edi, esi, ebp, esp, ebx, edx, ecx, eax)
+   ; esp+32 = num
+   ; esp+36 = error_code
+   ; esp+40 = EIP      (poussé automatiquement par le CPU)
+   ; esp+44 = CS
+   ; esp+48 = EFLAGS
+
+   push dword [esp+40]   ; EIP
+   push dword [esp+40]   ; error_code (décalé +4 à cause du push EIP)
+   push dword [esp+40]   ; num        (décalé +8 à cause des 2 push)
    call isr_handler      ;
-   add esp, 8            ; Nettoit les 2 push
+   add esp, 12           ; Nettoit les 3 push
    popad                 ; Restaure tout les registres sauvegarder
    add esp, 8            ; Nettoi le numéro d'interruption + code d'erreur
    iret                  ; Restaure eip + cs et reprend l'interruption
