@@ -2,34 +2,33 @@
 # NATHANOS - MAKEFILE
 # ==================================================
 
-# Compilation tools
+# Outils
 CC = i686-elf-gcc
 AS = nasm
 LD = i686-elf-ld
 
-# Compilation flags
-CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I kernel/idt
+# Flags
+CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I kernel/idt -I kernel/tty -I kernel/serial
 ASFLAGS = -f elf32
 LDFLAGS = -nostdlib
 
-# Folders
-BUILD   = build
-BOOT    = boot
-KERNEL  = kernel
-DRIVERS = drivers
-LIB     = lib
-IMG     = boot.img
+# Dossiers
+BUILD  = build
+BOOT   = boot
+KERNEL = kernel
+IMG    = boot.img
 
-# Source files
-C_SRCS   = $(wildcard $(KERNEL)/*.c) \
-            $(wildcard $(KERNEL)/idt/*.c) \
-            $(wildcard $(DRIVERS)/*.c) \
-            $(wildcard $(LIB)/*.c)
+# Sources
+C_SRCS   = $(wildcard $(KERNEL)/*.c)        \
+            $(wildcard $(KERNEL)/idt/*.c)    \
+            $(wildcard $(KERNEL)/tty/*.c)    \
+            $(wildcard $(KERNEL)/serial/*.c) \
+            $(wildcard lib/*.c)
 
 ASM_SRCS = $(filter-out $(KERNEL)/entry.asm, $(wildcard $(KERNEL)/*.asm)) \
             $(wildcard $(KERNEL)/idt/*.asm)
 
-# Object files
+# Objets
 C_OBJS   = $(patsubst %.c,   $(BUILD)/%.o, $(notdir $(C_SRCS)))
 ASM_OBJS = $(patsubst %.asm, $(BUILD)/%.o, $(notdir $(ASM_SRCS)))
 
@@ -51,10 +50,13 @@ $(BUILD)/%.o: $(KERNEL)/%.c
 $(BUILD)/%.o: $(KERNEL)/idt/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/%.o: $(DRIVERS)/%.c
+$(BUILD)/%.o: $(KERNEL)/tty/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/%.o: $(LIB)/%.c
+$(BUILD)/%.o: $(KERNEL)/serial/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/%.o: lib/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/%.o: $(KERNEL)/%.asm
@@ -78,20 +80,17 @@ $(BUILD)/stage2.bin: $(BOOT)/stage2.asm
 # ==================================================
 
 img: $(BUILD)/stage1.bin $(BUILD)/stage2.bin $(BUILD)/kernel.bin
-	dd if=/dev/zero      of=$(IMG) bs=512 count=524288
+	dd if=/dev/zero of=$(IMG) bs=512 count=524288
 	mkfs.fat -F 32 -R 32 -S 512 $(IMG)
 	dd if=$(BUILD)/stage1.bin of=$(IMG) bs=512 seek=0 conv=notrunc
 	dd if=$(BUILD)/stage2.bin of=$(IMG) bs=512 seek=2 conv=notrunc
 	mcopy -i $(IMG) $(BUILD)/kernel.bin ::kernel.bin
-	@echo ""
-	@echo "Vérification : stage2 doit commencer par 31 c0 8e d8 à l'offset 0x400"
-	@hexdump -C $(IMG) | grep -A1 "00000400"
 
 run-img:
-	qemu-system-i386 -drive format=raw,file=$(IMG),index=0,media=disk
+	qemu-system-i386 -drive format=raw,file=$(IMG),index=0,media=disk -serial stdio
 
 debug:
-	qemu-system-i386 -drive format=raw,file=$(IMG),index=0,media=disk -s -S
+	qemu-system-i386 -drive format=raw,file=$(IMG),index=0,media=disk -serial stdio -s -S
 
 clean:
 	rm -f $(BUILD)/*.o $(BUILD)/*.bin $(IMG)

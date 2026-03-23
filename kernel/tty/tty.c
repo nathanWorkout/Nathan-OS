@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdarg.h>
 
 #define vga_width 80
 
@@ -96,11 +97,73 @@ void putchar(char c) {
 void puts(char *s) {
     while(*s != '\0') {
 	putchar(*s);
-	s++
+	s++;
     }
     putchar('\n');
 }
 
-void printk() {
-    
+int printk(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int count = 0;
+
+    while(*fmt) {
+
+	if(*fmt == '%') {
+	    fmt++;
+
+	    switch(*fmt) {
+		case 'c':
+			char c = (char)va_arg(args, int); // pas va_arg(args, char) car il pousse toujours minimum 4 octets sur la stack 
+			putchar(c);			  // dcoup A = 00 00 00 00 41 dcoup char lit 00 mais int lit tout
+			count++;
+			break;
+
+		case 's':
+			char *s = va_arg(args, char*);
+			while(*s) { // Tant que c pas \0
+			    putchar(*s);
+			    s++;
+			    count++;
+			}
+			break;
+
+		case 'd':
+			// n = 1234
+			// 1234 % 10 = 4
+			// 123 % 10 = 12
+			// 12 % 10 = 1
+			// 1 % 10 = 0 -> fin de boucle
+			char buffer[20];
+			int i = 19;
+			int n = va_arg(args, int);
+
+			if(n == 0) {
+			    buffer[i--] = '0';
+			} 
+
+			while(n > 0) {
+			    buffer[i--] = '0' + (n % 10); // 10 car base 10
+			    n /= 10; // n = n / 10
+			}
+
+			while(++i < 20) {
+			    putchar(buffer[i]);
+			    count++;
+			}
+
+			break;
+	    }
+	fmt++;
+
+	} else {
+	    putchar(*fmt);
+	    fmt++;
+	    count++;
+	}
+
+    }
+
+    va_end(args);
+    return count; // Retourne le nombre de caractère sinon -1 
 }
