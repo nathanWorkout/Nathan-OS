@@ -1,5 +1,6 @@
 #include "isr.h"
 #include "idt.h"
+extern void irq0();
 
 void isr_init() {
     void (*isr_table[32])() = {
@@ -10,6 +11,7 @@ void isr_init() {
     };
     for (int i = 0; i < 32; i++) {
         idt_set_entry(i, (uint32_t)isr_table[i], 0x08, 0x8e);
+        idt_set_entry(32, (uint32_t)irq0, 0x08, 0x8e);
     }
 }
 

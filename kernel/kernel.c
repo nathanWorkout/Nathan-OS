@@ -1,9 +1,9 @@
 #include "idt.h"
 #include "isr.h"
 #include "tty.h"
-#include "com1.h"
 // tty c TeleTypeWritter c stylé comme nom
-
+#include "com1.h"
+#include "pic8089.h"
 #include <stdint.h>
 
 void kmain(void) {
@@ -15,14 +15,16 @@ void kmain(void) {
     volatile int a = 10;
     volatile int b = 0;
     volatile int c = a / b;
- */
+*/ 
 
     serial_init();
-    serial_print("Hello, World of debug !");
+    serial_print("Hello, world of debug !");
 
     tty_init();
     printk("Hello, World !");
-
+    
+    pic_init();
+    __asm__ volatile ("sti");    
    
 
     while (1); 

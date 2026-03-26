@@ -8,7 +8,7 @@ AS = nasm
 LD = i686-elf-ld
 
 # Flags
-CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I kernel/idt -I kernel/tty -I kernel/serial
+CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I kernel/idt -I kernel/tty -I kernel/serial -I kernel/pic -I kernel/io
 ASFLAGS = -f elf32
 LDFLAGS = -nostdlib
 
@@ -23,7 +23,8 @@ C_SRCS   = $(wildcard $(KERNEL)/*.c)        \
             $(wildcard $(KERNEL)/idt/*.c)    \
             $(wildcard $(KERNEL)/tty/*.c)    \
             $(wildcard $(KERNEL)/serial/*.c) \
-            $(wildcard lib/*.c)
+            $(wildcard lib/*.c)              \
+            $(wildcard $(KERNEL)/pic/*.c)
 
 ASM_SRCS = $(filter-out $(KERNEL)/entry.asm, $(wildcard $(KERNEL)/*.asm)) \
             $(wildcard $(KERNEL)/idt/*.asm)
@@ -64,6 +65,11 @@ $(BUILD)/%.o: $(KERNEL)/%.asm
 
 $(BUILD)/%.o: $(KERNEL)/idt/%.asm
 	$(AS) $(ASFLAGS) $< -o $@
+
+$(BUILD)/%.o: $(KERNEL)/pic/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+
 
 # ==================================================
 # BOOTLOADER

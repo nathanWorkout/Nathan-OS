@@ -1,9 +1,11 @@
 extern isr_handler
+extern irq0_handler
 global isr0, isr1, isr2, isr3, isr4, isr5, isr6, isr7
 global isr8, isr9, isr10, isr11, isr12, isr13, isr14, isr15
 global isr16, isr17, isr18, isr19, isr20, isr21, isr22, isr23
 global isr24, isr25, isr26, isr27, isr28, isr29, isr30, isr31
 global isr_common
+global irq0
 
 ; La c'est inversé mais c'est normal car lors de la réception en c, 
 ; les arguments sont inversé c'est le dernier en assembelur qui est apssé en premier
@@ -179,3 +181,13 @@ isr_common:
    popad                 ; Restaure tout les registres sauvegarder
    add esp, 8            ; Nettoi le numéro d'interruption + code d'erreur
    iret                  ; Restaure eip + cs et reprend l'interruption
+
+irq0:
+   pushad
+   call irq0_handler
+
+   mov al, 0x20
+   out 0x20, al
+
+   popad
+   iret
