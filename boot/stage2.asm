@@ -302,7 +302,35 @@ load_next_cluster:
     mov ebx, eax        ; sinon : ebx = prochain cluster
     jmp load_next_cluster
 
+
 done_loading:
+    ; E820
+    xor ebx, ebx
+    xor ax, ax
+    mov es, ax
+    mov di, 0x6000 ; [es:di] = 0x6000
+
+    mov eax, 0xe820
+    mov ecx, 24 ; taille du buffer
+    mov edx, 0x534D4150 ; Magic number pour confirmer l'appel e820
+    mov word [0x5FFE], 0
+
+    e820_loop:
+    mov eax, 0xE820
+    mov ecx, 24
+    int 0x15
+    jc e820_error
+    inc word [0x5FFE]
+    add di, 24 ; Avance le pointeur
+    test ebx, ebx
+    jnz e820_loop
+    jmp e820_done
+
+e820_error:
+    cli
+    hlt
+
+e820_done:
 
     ; =====================================================
     ; BASCULE EN MODE PROTÉGÉ 32 BITS

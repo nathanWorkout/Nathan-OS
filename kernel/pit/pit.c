@@ -4,7 +4,7 @@
 
 // Canal 0
 // Mode 3 (square wave)
-// Accès 16 bits (octet bas puis octet haut)
+// Accès 16 bits 
 // Format binaire
 void pit_init(uint32_t freq) {
     int divider = 1193182 / freq;

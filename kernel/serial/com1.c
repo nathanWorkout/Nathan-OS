@@ -42,3 +42,25 @@ void serial_print(char *str) {
     	str++;
     }
 }
+
+void serial_println(char *str) {
+    serial_print(str);
+    serial_print("\n");
+}
+
+void serial_print_hex(uint32_t n) {
+    char hex[] = "0123456789ABCDEF";
+    char buffer[11]; // 0x + 8 char + \0
+    
+    buffer[0] = '0';
+    buffer[1] = 'x';
+
+    for(int i = 0; i < 8; i++) {
+        buffer[9 - i] = hex[n & 0xF];
+        n >>= 4;
+    }
+
+    buffer[10] = '\0';
+
+    serial_print(buffer);
+}
