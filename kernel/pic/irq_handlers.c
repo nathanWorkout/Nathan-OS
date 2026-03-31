@@ -1,5 +1,5 @@
-#include "com1.h"
 #include <stdint.h>
+#include "com1.h"
 
 void irq0_handler() {
 // Test

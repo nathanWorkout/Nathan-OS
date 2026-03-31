@@ -5,6 +5,7 @@
 #include "com1.h"
 #include "pic8089.h"
 #include <stdint.h>
+#include "pmm.h"
 
 void kmain(void) {
 
@@ -17,11 +18,9 @@ void kmain(void) {
     volatile int c = a / b;
 */
 
-    serial_init();
-    serial_print("Hello, world of debug !");
+    serial_init(); 
 
     tty_init();
-    printk("Hello, World !");
 
     pit_init(1000);
     
@@ -29,6 +28,9 @@ void kmain(void) {
     __asm__ volatile ("sti");   
 
     pic_clear_mask(0);
+
+
+    pmm_init(0x6000, *(uint16_t*)0x5FFE); 
    
 
     while (1); 

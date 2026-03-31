@@ -311,7 +311,7 @@ done_loading:
     mov di, 0x6000 ; [es:di] = 0x6000
 
     mov eax, 0xe820
-    mov ecx, 24 ; taille du buffer
+    mov ecx, 20 ; taille du buffer e820 (structure de 20 octets pour e820)
     mov edx, 0x534D4150 ; Magic number pour confirmer l'appel e820
     mov word [0x5FFE], 0
 
