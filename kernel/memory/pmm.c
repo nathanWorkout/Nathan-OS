@@ -11,10 +11,10 @@ uint32_t kend = (uint32_t)&kernel_end;
 static uint32_t bitmap[65536];
 
 typedef struct {
-    uint64_t base;  //adresse
-    uint64_t length;
-    uint32_t type;  // 0 ou 1 ou 2 plus tard pour reservé
-    uint32_t padding; // Car la c 20 octets mais dans l'assembelur c 24
+    uint64_t base;  //adresse     8 octets
+    uint64_t length; //           8
+    uint32_t type;  // 0 ou 1 ou 2 plus tard pour reservé  4 octets
+    uint32_t padding; // Car la struct fait 20 octets mais dans l'assembelur c 24 donc on rajoute 4 octets pour que ca pointe au bon endroid
 } e820_entry_t;
 
 void pmm_init(uint32_t memory_map_addr, uint32_t region_count) {

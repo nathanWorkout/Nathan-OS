@@ -30,7 +30,9 @@ void kmain(void) {
     pic_clear_mask(0);
 
 
-    pmm_init(0x6000, *(uint16_t*)0x5FFE); 
+    pmm_init(0x6000, *(uint16_t*)0x5FFE);
+
+    printk("Hello, World");
    
 
     while (1); 
