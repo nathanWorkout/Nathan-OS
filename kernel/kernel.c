@@ -40,8 +40,7 @@ void kmain(void) {
 
     pic_clear_mask(0);
 
-
-    asm volatile("sti");
-
+    
+    asm volatile("cli"); while(1);
     while (1); 
 }
