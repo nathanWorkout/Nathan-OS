@@ -9,6 +9,6 @@
 
 #define COMMAND_REGISTER 0x43
 
-void pit_init(freq);
+void pit_init(uint32_t freq);
 
 #endif

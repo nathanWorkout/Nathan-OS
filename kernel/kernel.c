@@ -1,11 +1,15 @@
 #include "idt.h"
 #include "isr.h"
+#include "memory/pagging.h"
+#include "serial/com1.h"
 #include "tty.h"
 // tty c TeleTypeWritter c stylé comme nom
 #include "com1.h"
 #include "pic8089.h"
+#include "pit.h"
 #include <stdint.h>
 #include "pmm.h"
+#include "pagging.h"
 
 void kmain(void) {
 
@@ -22,6 +26,13 @@ void kmain(void) {
 
     tty_init();
 
+
+    pmm_init(0x6000, *(uint16_t*)0x5FFE); // Adresse de la mémory map et le nombre de région
+    pagging_init();
+    serial_println("La pagination s'est bien passé !");
+
+    printk("Hello, World");
+
     pit_init(1000);
     
     pic_init();
@@ -30,10 +41,7 @@ void kmain(void) {
     pic_clear_mask(0);
 
 
-    pmm_init(0x6000, *(uint16_t*)0x5FFE);
-
-    printk("Hello, World");
-   
+    asm volatile("sti");
 
     while (1); 
 }

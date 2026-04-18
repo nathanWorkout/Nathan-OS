@@ -1,5 +1,6 @@
 #include "isr.h"
 #include "idt.h"
+#include "com1.h"
 extern void irq0();
 
 void isr_init() {
@@ -57,6 +58,10 @@ static inline void outb(uint16_t port, uint8_t val) {
 }
 
 void isr_handler(uint32_t num, uint32_t error_code, uint32_t eip) {
+
+    serial_print("Exception: ");
+    serial_print_hex(num);
+    serial_print("\n");
 
     outb(0x3d4, 0x0a);
     outb(0x3d5, 0x20);

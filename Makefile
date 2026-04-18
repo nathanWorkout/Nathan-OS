@@ -99,11 +99,12 @@ img: $(BUILD)/stage1.bin $(BUILD)/stage2.bin $(BUILD)/kernel.bin
 	mcopy -i $(IMG) $(BUILD)/kernel.bin ::kernel.bin
 
 run-img:
-	qemu-system-i386 -drive format=raw,file=$(IMG),index=0,media=disk -serial stdio
+	#qemu-system-i386 -drive format=raw,file=boot.img,index=0,media=disk -serial stdio -d int,cpu 2>&1 | tail -200 > /tmp/qemu_log.txt && cat /tmp/qemu_log.txt
+	qemu-system-i386 -drive format=raw,file=$(IMG),index=0,media=disk -serial stdio -display gtk
+
 
 debug:
-	qemu-system-i386 -drive format=raw,file=$(IMG),index=0,media=disk -serial stdio -s -S
-
+	qemu-system-i386 -drive format=raw,file=$(IMG),index=0,media=disk -serial stdio -s -S -display gtk 
 clean:
 	rm -f $(BUILD)/*.o $(BUILD)/*.bin $(IMG)
 

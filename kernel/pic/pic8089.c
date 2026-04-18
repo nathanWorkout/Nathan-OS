@@ -7,7 +7,7 @@ void pic_init() {
     // | pour combiner 2 flags
     outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4); // Initialisation maitre (master)
     outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);    // Initilaisation esclave (slave)
-    outb(0x80, 0x00); // Delai pour que le cpu puisse traiter
+    outb(0xA0, 0x00); // Delai pour que le cpu puisse traiter
 
     // Remapping
     outb(PIC1_DATA, PIC1_OFFSET);
