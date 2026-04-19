@@ -11,7 +11,7 @@ Un système d'exploitation 32 bits écrit from scratch en C et assembleur (x86 i
 <!-- Ajoute tes screenshots ici -->
 | Shell | Kernel Panic |
 |-------|--------------|
-| ![Shell](/home/nathan/Images/shell.png) | ![Kernel Panic](/home/nathan/Images/kernel_panic.png) |
+| ![Shell](Images/shell.png) | ![Kernel Panic](Images/kernel_panic.png) |
 
 ---
 
