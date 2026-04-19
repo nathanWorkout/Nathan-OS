@@ -18,25 +18,7 @@ static inline uint8_t inb(uint16_t port) {
     return val;
 }
 
-/*
-// 0x3d4 : port index ; 0x3d5 port data : lire et écrire epuis le registre
-void enable_cursor(uint8_t cursor_start, uint8_t cursor_end) {
-    outb(0x3d4, 0x0a); 
-    outb(0x3d5, (inb(0x3d5) & 0xc0) | cursor_start); // on veut le registre qui controle le début du curseur et écrit
-    outb(0x3d4, 0x0b); 
-    outb(0x3d5, (inb(0x3d5) & 0xe0) | cursor_end); // 0x0e car on a 3 bits a préserver
-}
-*/
 
-/*
-void update_cursor(int x, int y) {
-    uint16_t pos = y * vga_width + x;
-    outb(0x3d4, 0x0f);				
-    outb(0x3d5, (uint8_t)(pos & 0xff)); // garde seulement les bits de droite et on envoie au vga  
-    outb(0x3d4, 0x0e);
-    outb(0x3d5, (uint8_t)((pos >> 8) & 0xff)); // décale tout vers la dorite qu'on envoie au vga et il recolle les 2
-}
-*/
 
 void enable_cursor(uint8_t cursor_start, uint8_t cursor_end) {
     outb(0x3d4, 0x0a);
@@ -73,7 +55,7 @@ void tty_init() {
     volatile unsigned short *vga = (unsigned short *) 0xb8000;
 
     for(int i = 0; i < 80 * 25; i++){
-	vga[i] = (couleur << 8) | ' '; // signé 8 bits car 0-7 : caractère, 8-15 : couleur
+    	vga[i] = (couleur << 8) | ' '; // signé 8 bits car 0-7 : caractère, 8-15 : couleur
     }
 
     update_cursor(cursor_x, cursor_y);
@@ -83,13 +65,13 @@ void putchar(char c) {
     volatile unsigned short *vga = (unsigned short *) 0xb8000;
 
     switch(c) {
-	case '\n': cursor_y++; cursor_x = 0; break; // entrée
-	case '\r': cursor_x = 0; break; // certains terminaux envoient \r\n ensemble pour un retour à la ligne (convention windows ou dos) 
-	case '\t': cursor_x += 4; break; // tab (4 espaces parce que c'est plus pratique pour coder :)
+    	case '\n': cursor_y++; cursor_x = 0; break; // entrée
+    	case '\r': cursor_x = 0; break; // certains terminaux envoient \r\n ensemble pour un retour à la ligne (convention windows ou dos) 
+    	case '\t': cursor_x += 4; break; // tab (4 espaces parce que c'est plus pratique pour coder :)
 
-  case '\b':
-    if(cursor_x > 0) cursor_x--;
-    vga[cursor_y * 80 + cursor_x] = (couleur << 8) | ' ';
+    case '\b':
+      if(cursor_x > 0) cursor_x--;
+      vga[cursor_y * 80 + cursor_x] = (couleur << 8) | ' ';
   
     break;
 	default:
