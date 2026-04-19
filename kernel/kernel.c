@@ -1,4 +1,5 @@
 #include "idt.h"
+#include "idt/gdt.h"
 #include "isr.h"
 #include "memory/pagging.h"
 #include "serial/com1.h"
@@ -10,9 +11,10 @@
 #include <stdint.h>
 #include "pmm.h"
 #include "pagging.h"
+#include "gdt.h"
 
 void kmain(void) {
-
+    gdt_init();
     idt_init();
     isr_init();
 
