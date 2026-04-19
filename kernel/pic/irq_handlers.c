@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "com1.h"
+#include "keyboard.h"
 
 void irq0_handler() {
   

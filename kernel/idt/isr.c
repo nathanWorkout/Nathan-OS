@@ -2,6 +2,7 @@
 #include "idt.h"
 #include "com1.h"
 extern void irq0();
+extern void irq1();
 
 void isr_init() {
     void (*isr_table[32])() = {
@@ -14,6 +15,7 @@ void isr_init() {
         idt_set_entry(i, (uint32_t)isr_table[i], 0x08, 0x8e);
     }
     idt_set_entry(32, (uint32_t)irq0, 0x08, 0x8e);
+    idt_set_entry(33, (uint32_t)irq1, 0x08, 0x8e);
 }
 
 static void vga_puts(volatile unsigned short *vga, int ligne, int col, const char *s, unsigned short couleur) {

@@ -38,9 +38,10 @@ void kmain(void) {
     pic_init();
     __asm__ volatile ("sti");   
 
-    pic_clear_mask(0);
-
+    pic_clear_mask(1);
+    uint8_t mask = inb(0x21);
+    serial_print_hex(mask);
     
-    asm volatile("cli"); while(1);
+  //  asm volatile("cli"); while(1);
     while (1); 
 }

@@ -55,7 +55,7 @@ void pmm_init(uint32_t memory_map_addr, uint32_t region_count) {
  	bitmap[kpage / 32] |= (1 << (kpage % 32));
     }
 
-    for(uint32_t p = 0; p <= 0x7000 / PAGE_SIZE; p++) {
+    for(uint32_t p = 0; p <= 0x10000 / PAGE_SIZE; p++) {
       bitmap[p / 32] |= (1 << (p % 32));
     }
 

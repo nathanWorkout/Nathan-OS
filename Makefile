@@ -8,7 +8,7 @@ AS = nasm
 LD = i686-elf-ld
 
 # Flags
-CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I kernel/idt -I kernel/tty -I kernel/serial -I kernel/pic -I kernel/io -I kernel/pit -I kernel/memory
+CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I kernel/idt -I kernel/tty -I kernel/serial -I kernel/pic -I kernel/io -I kernel/pit -I kernel/memory -I kernel/drivers -I kernel/drivers/keyboard
 ASFLAGS = -f elf32
 LDFLAGS = -nostdlib
 
@@ -25,8 +25,10 @@ C_SRCS   = $(wildcard $(KERNEL)/*.c)        \
             $(wildcard $(KERNEL)/serial/*.c) \
             $(wildcard lib/*.c)              \
             $(wildcard $(KERNEL)/pic/*.c)    \
-	    $(wildcard $(KERNEL)/pit/*.c)    \
-	    $(wildcard $(KERNEL)/memory/*.c)
+	    			$(wildcard $(KERNEL)/pit/*.c)    \
+	    			$(wildcard $(KERNEL)/memory/*.c) \
+						$(wildcard $(KERNEL)/drivers/*.c) \
+						$(wildcard $(KERNEL)/drivers/keyboard/*.c)
 
 ASM_SRCS = $(filter-out $(KERNEL)/entry.asm, $(wildcard $(KERNEL)/*.asm)) \
             $(wildcard $(KERNEL)/idt/*.asm)
@@ -76,6 +78,13 @@ $(BUILD)/%.o: $(KERNEL)/pit/%.c
 
 $(BUILD)/%.o: $(KERNEL)/memory/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/%.o: $(KERNEL)/drivers/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/%.o: $(KERNEL)/drivers/keyboard/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
 
 # ==================================================
 # BOOTLOADER

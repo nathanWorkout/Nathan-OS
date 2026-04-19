@@ -1,4 +1,5 @@
 #include "idt.h"
+#include "com1.h"
 
 idt_entry_t idt[256];
 idtr_t idtr;
@@ -16,4 +17,7 @@ void idt_init() {
     idtr.base  = (uint32_t)&idt;
 
     asm volatile("lidt %0" : : "m"(idtr));
+
+    serial_print_hex(idtr.limit);
+    serial_print_hex(idtr.base);
 }
