@@ -10,5 +10,8 @@ void tty_init();
 void putchar(char c);
 void puts(char *s);
 int printk(const char *fmt, ...);
+void tty_set_color(unsigned char c);
+void tty_clear();
+void tty_reboot();
 
 #endif

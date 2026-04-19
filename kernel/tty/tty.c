@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdarg.h>
+#include "com1.h"
 
 #define vga_width 80
 
@@ -17,6 +18,7 @@ static inline uint8_t inb(uint16_t port) {
     return val;
 }
 
+/*
 // 0x3d4 : port index ; 0x3d5 port data : lire et écrire epuis le registre
 void enable_cursor(uint8_t cursor_start, uint8_t cursor_end) {
     outb(0x3d4, 0x0a); 
@@ -24,13 +26,31 @@ void enable_cursor(uint8_t cursor_start, uint8_t cursor_end) {
     outb(0x3d4, 0x0b); 
     outb(0x3d5, (inb(0x3d5) & 0xe0) | cursor_end); // 0x0e car on a 3 bits a préserver
 }
+*/
 
+/*
 void update_cursor(int x, int y) {
     uint16_t pos = y * vga_width + x;
     outb(0x3d4, 0x0f);				
     outb(0x3d5, (uint8_t)(pos & 0xff)); // garde seulement les bits de droite et on envoie au vga  
     outb(0x3d4, 0x0e);
     outb(0x3d5, (uint8_t)((pos >> 8) & 0xff)); // décale tout vers la dorite qu'on envoie au vga et il recolle les 2
+}
+*/
+
+void enable_cursor(uint8_t cursor_start, uint8_t cursor_end) {
+    outb(0x3d4, 0x0a);
+    outb(0x3d5, 0x00);
+    outb(0x3d4, 0x0b);
+    outb(0x3d5, 0x00);
+}
+
+void update_cursor(int x, int y) {
+    uint16_t pos = y * vga_width + x;
+    outb((uint16_t)0x3D4, 0x0f);
+    outb((uint16_t)0x3D5, (uint8_t)(pos & 0xff));
+    outb((uint16_t)0x3D4, 0x0e);
+    outb((uint16_t)0x3D5, (uint8_t)((pos >> 8) & 0xff));
 }
 
 // lit les 8 bits de poid fort et 8 de poid faible pour reformer la position de 16 bits
@@ -66,31 +86,37 @@ void putchar(char c) {
 	case '\n': cursor_y++; cursor_x = 0; break; // entrée
 	case '\r': cursor_x = 0; break; // certains terminaux envoient \r\n ensemble pour un retour à la ligne (convention windows ou dos) 
 	case '\t': cursor_x += 4; break; // tab (4 espaces parce que c'est plus pratique pour coder :)
+
+  case '\b':
+    if(cursor_x > 0) cursor_x--;
+    vga[cursor_y * 80 + cursor_x] = (couleur << 8) | ' ';
+  
+    break;
 	default:
 	    vga[cursor_y * 80 + cursor_x] = (couleur <<8) | c;
 	    cursor_x++;
     }
 
     if(cursor_x >= 80) {
-	cursor_x = 0;
-	cursor_y++;
+    	cursor_x = 0;
+	    cursor_y++;
     }
 
     // on parcours toutes les lignes, puis on les décale de - 1 et on efface la premiere
     if(cursor_y >= 25) {
-	for(int a = 1; a <= 24; a++) {
-	    for(int b = 0; b <= 79; b++) {
-		vga[(a - 1) * 80 + b] = vga[a * 80 + b];
+	    for(int a = 1; a <= 24; a++) {
+	      for(int b = 0; b <= 79; b++) {
+		      vga[(a - 1) * 80 + b] = vga[a * 80 + b];
+	      }
 	    }
-	}
 
-	for(int b = 0; b <= 79; b++) {
-	    vga[24 * 80 + b] = (couleur << 8) | ' ';
-	}
-        cursor_y = 24;
-	cursor_x = 0;
+	    for(int b = 0; b <= 79; b++) {
+	      vga[24 * 80 + b] = (couleur << 8) | ' ';
+	    }
+      cursor_y = 24;
+	    cursor_x = 0;
     }
-
+    
     update_cursor(cursor_x, cursor_y);
 }
 
@@ -164,6 +190,33 @@ int printk(const char *fmt, ...) {
 
     }
 
+    update_cursor(cursor_x, cursor_y);
     va_end(args);
     return count; // Retourne le nombre de caractère sinon -1 
+}
+
+void tty_set_color(unsigned char c) {
+    couleur = c;
+}
+
+void tty_clear() {
+    volatile unsigned short *vga = (unsigned short *) 0xb8000;
+
+    unsigned char old = couleur;
+    couleur = 0x1f; // blanc
+
+    for(int i = 0; i < 80 * 25; i++) {
+        vga[i] = (couleur << 8) | ' ';
+    }
+
+    couleur = old;
+
+    cursor_x = 0;
+    cursor_y = 0;
+
+    update_cursor(cursor_x, cursor_y);
+}
+
+void tty_reboot() {
+  outb(0x64, 0xFE);
 }

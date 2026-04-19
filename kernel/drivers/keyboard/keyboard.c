@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include "com1.h"
 #include "io.h"
+#include "ring_buffer.h"
 
 static bool shift;
 
@@ -148,9 +149,9 @@ void irq1_handler() {
     char c_shift = scancode_table_shift[scancode];
  
     if(shift && c_shift) {
-        serial_putchar(c_shift);
+        input_push(c_shift);
     } else if(c) {
-        serial_putchar(c);
+        input_push(c);
     }
 
     outb(0x20, 0x20);

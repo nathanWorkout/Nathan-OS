@@ -1,5 +1,6 @@
 [bits 32]
 [global _start]
+global kernel_stack_top
 [extern kmain]
 
 section .bss

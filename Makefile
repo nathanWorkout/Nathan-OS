@@ -8,7 +8,9 @@ AS = nasm
 LD = i686-elf-ld
 
 # Flags
-CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I kernel/idt -I kernel/tty -I kernel/serial -I kernel/pic -I kernel/io -I kernel/pit -I kernel/memory -I kernel/drivers -I kernel/drivers/keyboard
+CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I kernel/idt -I kernel/tty -I kernel/serial -I kernel/pic -I kernel/io -I kernel/pit -I kernel/memory -I kernel/drivers -I kernel/drivers/keyboard -I kernel/shell -I kernel/lib
+
+
 ASFLAGS = -f elf32
 LDFLAGS = -nostdlib
 
@@ -23,12 +25,13 @@ C_SRCS   = $(wildcard $(KERNEL)/*.c)        \
             $(wildcard $(KERNEL)/idt/*.c)    \
             $(wildcard $(KERNEL)/tty/*.c)    \
             $(wildcard $(KERNEL)/serial/*.c) \
-            $(wildcard lib/*.c)              \
+            $(wildcard $(KERNEL)/lib/*.c)    \
             $(wildcard $(KERNEL)/pic/*.c)    \
 	    			$(wildcard $(KERNEL)/pit/*.c)    \
 	    			$(wildcard $(KERNEL)/memory/*.c) \
 						$(wildcard $(KERNEL)/drivers/*.c) \
-						$(wildcard $(KERNEL)/drivers/keyboard/*.c)
+						$(wildcard $(KERNEL)/drivers/keyboard/*.c) \
+						$(wildcard $(KERNEL)/shell/*.c) 
 
 ASM_SRCS = $(filter-out $(KERNEL)/entry.asm, $(wildcard $(KERNEL)/*.asm)) \
             $(wildcard $(KERNEL)/idt/*.asm)
@@ -61,7 +64,7 @@ $(BUILD)/%.o: $(KERNEL)/tty/%.c
 $(BUILD)/%.o: $(KERNEL)/serial/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/%.o: lib/%.c
+$(BUILD)/%.o: $(KERNEL)/lib/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/%.o: $(KERNEL)/%.asm
@@ -83,6 +86,9 @@ $(BUILD)/%.o: $(KERNEL)/drivers/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/%.o: $(KERNEL)/drivers/keyboard/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/%.o: $(KERNEL)/shell/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 
@@ -109,7 +115,7 @@ img: $(BUILD)/stage1.bin $(BUILD)/stage2.bin $(BUILD)/kernel.bin
 
 run-img:
 	#qemu-system-i386 -drive format=raw,file=boot.img,index=0,media=disk -serial stdio -d int,cpu 2>&1 | tail -200 > /tmp/qemu_log.txt && cat /tmp/qemu_log.txt
-	qemu-system-i386 -drive format=raw,file=$(IMG),index=0,media=disk -serial stdio -display gtk
+	qemu-system-i386 -drive format=raw,file=$(IMG),index=0,media=disk -serial stdio   
 
 
 debug:
