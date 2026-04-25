@@ -17,8 +17,8 @@ Peu importe ce qui se passe dans l'espace utilisateur - mauvaise config, driver 
 
 ## Screenshots
 
-| Shell texte                | Kernel Panic                       | Bureau Windows-like |
-| -------------------------- | ---------------------------------- | ------------------- |
+| Shell texte                | Kernel Panic                       |
+| -------------------------- | ---------------------------------- |
 | ![shell](Images/shell.png) | ![kpanic](Images/kernel_panic.png) |
 
 ---
