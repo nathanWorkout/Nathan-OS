@@ -86,72 +86,74 @@ Un espace de travail 2D navigable librement — 10 000 × 10 000 pixels virtuels
 
 ### Bootloader (2 stages)
 
-- Stage 1 — MBR 512 octets, signature `0xAA55`, chargement stage 2 via `int 0x13` CHS
-- Stage 2 — ligne A20, lecture LBA étendue, parcours répertoire FAT32 (format 8.3), suivi chaîne de clusters, kernel chargé à `0x20000`, memory map E820 à `0x6000`, GDT 5 entrées, passage mode protégé, parsing ELF32, saut vers `e_entry`
+- Stage 1 - MBR 512 octets, signature `0xAA55`, chargement stage 2 via `int 0x13` CHS
+- Stage 2 - ligne A20, lecture LBA étendue, parcours répertoire FAT32 (format 8.3), suivi chaîne de clusters, kernel chargé à `0x20000`, memory map E820 à `0x6000`, GDT 5 entrées, passage mode protégé, parsing ELF32, saut vers `e_entry`
 
 ### Kernel
 
 - GDT rechargée depuis C, IDT 256 entrées, ISR stubs `isr0`–`isr31`
-- IRQ0 (timer), IRQ1 (clavier) — cycle `pushad/iret` complet
-- PIC 8259 — remappé, masqué, EOI
-- PIT — 1000 Hz, canal 0 mode 3
-- VGA texte 80×25 — scroll, curseur hardware, couleurs
-- Port série COM1 — 38400 baud 8N1, sortie `printk`
-- Kernel panic — sortie visuelle colorée
+- IRQ0 (timer), IRQ1 (clavier) - cycle `pushad/iret` complet
+- PIC 8259 - remappé, masqué, EOI
+- PIT - 1000 Hz, canal 0 mode 3
+- VGA texte 80×25 - scroll, curseur hardware, couleurs
+- Port série COM1 - 38400 baud 8N1, sortie `printk`
+- Kernel panic - sortie visuelle colorée
 
 ### Mémoire
 
-- PMM — allocateur bitmap, `alloc_page` / `free_page`
-- VMM — paging complet, tables de pages par profil, TLB invalidation
-- COW — page fault handler ISR 14, copie privée à la demande
-- Heap kernel — `kmalloc` / `kfree` / `krealloc`, coalescence
+- PMM - allocateur bitmap, `alloc_page` / `free_page`
+- VMM - paging complet, tables de pages par profil, TLB invalidation
+- COW - page fault handler ISR 14, copie privée à la demande
+- Heap kernel - `kmalloc` / `kfree` / `krealloc`, coalescence
 
 ### Processus
 
 - `process_t` - pid, état, `cr3`, pile kernel, point d'entrée
 - Context switch en assembleur (registres callee-saved, swap `cr3`)
 - Scheduler round-robin, processus idle avec `hlt`
-- TSS — `esp0` mis à jour à chaque context switch
+- TSS - `esp0` mis à jour à chaque context switch
 - `fork`, `exec`, `wait`, zombies nettoyés proprement
-- Signaux — `SIGKILL`, `SIGSEGV`, `SIGTERM`, `SIGCHLD`
-- Pipes — buffer 4096 octets, bloquants, hérités au `fork`
+- Signaux - `SIGKILL`, `SIGSEGV`, `SIGTERM`, `SIGCHLD`
+- Pipes - buffer 4096 octets, bloquants, hérités au `fork`
 
 ### Syscalls (`int 0x80`)
 
 - `exit`, `read`, `write`, `open`, `close`, `getpid`, `fork`, `exec`
 - Validation systématique des pointeurs reçus depuis ring 3
-- Trap gate DPL=3 — accessible depuis ring 3 sans GPF
+- Trap gate DPL=3 - accessible depuis ring 3 sans GPF
 
 ### Graphique
 
-- Framebuffer VESA — détecté en stage 2, mappé via VMM
-- Primitives — `put_pixel`, `fill_rect`, `draw_line` (Bresenham), `draw_circle` (Midpoint), `blit`, `blit_alpha`
-- Rendu texte — police PSF 8×16
-- Double buffering — rendu dans un back buffer, `flip()` vers le framebuffer
-- Driver souris PS/2 — paquets 3 octets, IRQ12, delta X/Y, boutons
-- Curseur souris — sprite 12×20, sauvegarde/restauration des pixels sous le curseur
-- Window manager — décoration, drag, focus, z-order, boucle 60 Hz
+- Framebuffer VESA - détecté en stage 2, mappé via VMM
+- Primitives - `put_pixel`, `fill_rect`, `draw_line` (Bresenham), `draw_circle` (Midpoint), `blit`, `blit_alpha`
+- Rendu texte - police PSF 8×16
+- Double buffering - rendu dans un back buffer, `flip()` vers le framebuffer
+- Driver souris PS/2 - paquets 3 octets, IRQ12, delta X/Y, boutons
+- Curseur souris - sprite 12×20, sauvegarde/restauration des pixels sous le curseur
+- Window manager - décoration, drag, focus, z-order, boucle 60 Hz
 
 ### VFS
 
-- Interface générique — `open`, `read`, `write`, `close`, `readdir`, `mkdir`, `unlink`
-- RamFS — filesystem en mémoire, toutes opérations supportées
-- DevFS — `/dev/tty`, `/dev/com1`, `/dev/null`, `/dev/zero`
-- FAT32 — lecture BPB, suivi chaîne de clusters, `finddir`, `open`, `read`
-- File descriptors par processus — `stdin`/`stdout`/`stderr` initialisés au boot
+- Interface générique - `open`, `read`, `write`, `close`, `readdir`, `mkdir`, `unlink`
+- RamFS - filesystem en mémoire, toutes opérations supportées
+- DevFS - `/dev/tty`, `/dev/com1`, `/dev/null`, `/dev/zero`
+- FAT32 - lecture BPB, suivi chaîne de clusters, `finddir`, `open`, `read`
+- File descriptors par processus - `stdin`/`stdout`/`stderr` initialisés au boot
 
 ### Applications
 
-- Terminal graphique — 80×25, scroll, shell complet branché dessus
-- Gestionnaire de fichiers — navigation VFS, icônes, menu contextuel
-- Éditeur de texte — buffer de lignes, undo, `Ctrl+S`
+- Terminal graphique - 80×25, scroll, shell complet branché dessus
+- Gestionnaire de fichiers - navigation VFS, icônes, menu contextuel
+- Quelques Applications
+- Format d'installation personalsé (.napp)
+- Convertisseur de .deb en .napp
 
 ### Libc (in-kernel)
 
-- `string.h` — `strlen`, `strcpy`, `strcmp`, `strcat`, `strstr`, `strtok_r`...
-- `memory.h` — `memcpy`, `memset`, `memcmp`, `memmove`
-- `stdlib.h` — `atoi`, `itoa`, `strtol`, `malloc`/`free`, `realloc`
-- `stdio.h` — `printf`, `sprintf`, `snprintf` (`%d %s %x %u %c %p`)
+- `string.h` - `strlen`, `strcpy`, `strcmp`, `strcat`, `strstr`, `strtok_r`...
+- `memory.h` - `memcpy`, `memset`, `memcmp`, `memmove`
+- `stdlib.h` - `atoi`, `itoa`, `strtol`, `malloc`/`free`, `realloc`
+- `stdio.h` - `printf`, `sprintf`, `snprintf` (`%d %s %x %u %c %p`)
 
 ---
 
