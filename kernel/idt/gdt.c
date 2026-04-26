@@ -14,7 +14,7 @@ typedef struct __attribute__((packed)) {
     uint32_t base;   
 } gdt_descriptor_t;
 
-static gdt_entry_t gdt[3];
+static gdt_entry_t gdt[6];
 static gdt_descriptor_t gdtr;
 
 static void gdt_set_entry(int i, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
@@ -27,18 +27,30 @@ static void gdt_set_entry(int i, uint32_t base, uint32_t limit, uint8_t access, 
 }
 
 static inline void gdt_load(gdt_descriptor_t *gdtr) {
-    __asm__ volatile ("lgdt (%0)" : : "r"(gdtr));
+    __asm__ volatile ("lgdt (%0)\n" 
+        "jmp $0x08, $.offset\n"
+        ".offset:\n"
+        "mov $0x10, %%ax\n"
+        "mov %%ax, %%ds\n"
+        "mov %%ax, %%es\n"
+        "mov %%ax, %%fs\n"
+        "mov %%ax, %%gs\n"
+        "mov %%ax, %%ss\n"
+        : : "r"(gdtr) : "eax");
 }
 
 void gdt_init(void) {
     gdt_set_entry(0, 0, 0, 0, 0);
-
     gdt_set_entry(1, 0x00000000, 0x000FFFFF, 0x9A, 0xCF);
-
     gdt_set_entry(2, 0x00000000, 0x000FFFFF, 0x92, 0xCF);
+    gdt_set_entry(3, 0x00000000, 0x000FFFFF, 0xFA, 0xCF);
+    gdt_set_entry(4, 0x00000000, 0x000FFFFF, 0xF2, 0xCF);
+    gdt_set_entry(5, 0, 0, 0x89, 0);
 
-    gdtr.limit = (sizeof(gdt_entry_t) * 3) - 1;
+    gdtr.limit = (sizeof(gdt_entry_t) * 6) - 1;
     gdtr.base  = (uint32_t)&gdt;
 
     gdt_load(&gdtr);
 }
+
+

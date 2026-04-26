@@ -59,10 +59,10 @@ static inline void outb(uint16_t port, uint8_t val) {
     __asm__ volatile ("outb %0, %1" : : "a"(val), "nd"(port));
 }
 
-void isr_handler(uint32_t num, uint32_t error_code, uint32_t eip) {
+void isr_handler(interrupt_frame_t* frame) {
 
     serial_print("Exception: ");
-    serial_print_hex(num);
+    serial_print_hex(frame->num);
     serial_print("\n");
 
     outb(0x3d4, 0x0a);
@@ -573,33 +573,33 @@ void isr_handler(uint32_t num, uint32_t error_code, uint32_t eip) {
     
     vga_puts(vga, 10, 44, "--------------------------------", 0x1f00);
 
-    // Exception #num
+    // Exception #frame->num
     vga_puts(vga, 11, 44, "Exception #", 0x3f00);
-    vga_putdec(vga, 11, 55, num, 0x3f00);
+    vga_putdec(vga, 11, 55, frame->num, 0x3f00);
 
     const char *msg = "Unknown exception";
-    if (num == 0)  msg = "Error : Division by zero";
-    else if (num == 1)  msg = "Error : Debug";
-    else if (num == 2)  msg = "Error : NMI";
-    else if (num == 3)  msg = "Error : Breakpoint";
-    else if (num == 4)  msg = "Error : Overflow";
-    else if (num == 5)  msg = "Error : Bound range exceeded";
-    else if (num == 6)  msg = "Error : Invalid opcode";
-    else if (num == 7)  msg = "Error : Device not available";
-    else if (num == 8)  msg = "Error : Double fault";
-    else if (num == 10) msg = "Error : Invalid TSS";
-    else if (num == 11) msg = "Error : Segment not present";
-    else if (num == 12) msg = "Error : Stack segment fault";
-    else if (num == 13) msg = "Error : General protection fault";
-    else if (num == 14) msg = "Error : Page fault";
-    else if (num == 16) msg = "Error : x87 FPU exception";
-    else if (num == 17) msg = "Error : Alignment check";
-    else if (num == 18) msg = "Error : Machine check";
-    else if (num == 19) msg = "Error : SIMD FP exception";
+    if (frame->num == 0)  msg = "Error : Division by zero";
+    else if (frame->num == 1)  msg = "Error : Debug";
+    else if (frame->num == 2)  msg = "Error : NMI";
+    else if (frame->num == 3)  msg = "Error : Breakpoint";
+    else if (frame->num == 4)  msg = "Error : Overflow";
+    else if (frame->num == 5)  msg = "Error : Bound range exceeded";
+    else if (frame->num == 6)  msg = "Error : Invalid opcode";
+    else if (frame->num == 7)  msg = "Error : Device not available";
+    else if (frame->num == 8)  msg = "Error : Double fault";
+    else if (frame->num == 10) msg = "Error : Invalid TSS";
+    else if (frame->num == 11) msg = "Error : Segment not present";
+    else if (frame->num == 12) msg = "Error : Stack segment fault";
+    else if (frame->num == 13) msg = "Error : General protection fault";
+    else if (frame->num == 14) msg = "Error : Page fault";
+    else if (frame->num == 16) msg = "Error : x87 FPU exception";
+    else if (frame->num == 17) msg = "Error : Alignment check";
+    else if (frame->num == 18) msg = "Error : Machine check";
+    else if (frame->num == 19) msg = "Error : SIMD FP exception";
     vga_puts(vga, 12, 44, msg, 0x3f00);
 
     vga_puts(vga, 13, 44, "EIP : ", 0x3f00);
-    vga_puthex(vga, 13, 50, eip, 0x3f00);
+    vga_puthex(vga, 13, 50, frame->eip, 0x3f00);
 
     while(1);
 }

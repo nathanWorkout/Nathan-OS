@@ -163,25 +163,15 @@ isr31:
    jmp isr_common
 
 isr_common:
-   pushad                ; Sauvegarde les registre
-   cld                   ; Remet les flags direction à 0
-
-   ; pile à ce stade :
-   ; esp+0  à esp+28 = pushad (edi, esi, ebp, esp, ebx, edx, ecx, eax)
-   ; esp+32 = num
-   ; esp+36 = error_code
-   ; esp+40 = EIP      (poussé automatiquement par le CPU)
-   ; esp+44 = CS
-   ; esp+48 = EFLAGS
-
-   push dword [esp+40]   ; eip
-   push dword [esp+40]   ; error_code (décalé +4 à cause du push eip)
-   push dword [esp+40]   ; num        (décalé +8 à cause des 2 push)
-   call isr_handler      ;
-   add esp, 12           ; nettoit les 3 push
-   popad                 ; restaure tout les registres sauvegarder
-   add esp, 8            ; nettoi le numéro d'interruption + code d'erreur
-   iret                  ; restaure eip + cs et reprend l'interruption
+   pushad
+   cld
+   mov eax, esp        ; eax pointe sur le début de la frame
+   push eax            ; on passe ce pointeur à isr_handler
+   call isr_handler
+   add esp, 4          ; on nettoie juste le 1 push
+   popad
+   add esp, 8
+   iret
 
 irq0:
    pushad

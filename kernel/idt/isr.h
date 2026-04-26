@@ -36,7 +36,15 @@ extern void isr29();
 extern void isr30();
 extern void isr31();
 
-void isr_handler(uint32_t num, uint32_t error_code, uint32_t eip);
+typedef struct {
+    uint32_t edi, esi, ebp, esp_dummy, ebx, edx, ecx, eax;
+    uint32_t num;
+    uint32_t error_code;
+    uint32_t eip, cs, eflags;
+    uint32_t user_esp, user_ss;
+} __attribute__((packed)) interrupt_frame_t;
+
+void isr_handler(interrupt_frame_t* frame);
 void isr_init();
 
 #endif
