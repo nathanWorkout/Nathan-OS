@@ -18,5 +18,6 @@ typedef struct __attribute__((packed)) {
 } gdt_descriptor_t;
 
 void gdt_init(void);
+void gdt_set_tss_entry(uint32_t base, uint32_t limit);
 
 #endif

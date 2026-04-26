@@ -53,4 +53,7 @@ void gdt_init(void) {
     gdt_load(&gdtr);
 }
 
+void gdt_set_tss_entry(uint32_t base, uint32_t limit) {
+    gdt_set_entry(5, base, limit, 0x89, 0x00);
+}
 
