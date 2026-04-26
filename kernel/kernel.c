@@ -13,6 +13,7 @@
 #include "pagging.h"
 #include "gdt.h"
 #include "ring_buffer.h"
+#include "tss.h"
 
 extern char kernel_stack_top[];
 
@@ -38,6 +39,7 @@ void kmain(void) {
     pic_clear_mask(1);
     uint8_t mask = inb(0x21);
     serial_print_hex(mask);
+    tss_init();
     
     shell_run();
     while (1); 

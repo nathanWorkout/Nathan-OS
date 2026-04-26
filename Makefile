@@ -8,7 +8,7 @@ AS = nasm
 LD = i686-elf-ld
 
 # Flags
-CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I kernel/idt -I kernel/tty -I kernel/serial -I kernel/pic -I kernel/io -I kernel/pit -I kernel/memory -I kernel/drivers -I kernel/drivers/keyboard -I kernel/shell -I kernel/lib
+CFLAGS  = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I kernel/idt -I kernel/tty -I kernel/serial -I kernel/pic -I kernel/io -I kernel/pit -I kernel/memory -I kernel/drivers -I kernel/drivers/keyboard -I kernel/shell -I kernel/lib -I kernel/proc
 
 
 ASFLAGS = -f elf32
@@ -31,10 +31,12 @@ C_SRCS   = $(wildcard $(KERNEL)/*.c)        \
 	    			$(wildcard $(KERNEL)/memory/*.c) \
 						$(wildcard $(KERNEL)/drivers/*.c) \
 						$(wildcard $(KERNEL)/drivers/keyboard/*.c) \
-						$(wildcard $(KERNEL)/shell/*.c) 
+						$(wildcard $(KERNEL)/shell/*.c) \
+						$(wildcard $(KERNEL)/proc/*.c)
 
 ASM_SRCS = $(filter-out $(KERNEL)/entry.asm, $(wildcard $(KERNEL)/*.asm)) \
-            $(wildcard $(KERNEL)/idt/*.asm)
+            $(wildcard $(KERNEL)/idt/*.asm) \
+						$(wildcard $(KERNEL)/proc/*.asm)
 
 # Objets
 C_OBJS   = $(patsubst %.c,   $(BUILD)/%.o, $(notdir $(C_SRCS)))
@@ -90,6 +92,12 @@ $(BUILD)/%.o: $(KERNEL)/drivers/keyboard/%.c
 
 $(BUILD)/%.o: $(KERNEL)/shell/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/%.o: $(KERNEL)/proc/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/%.o: $(KERNEL)/proc/%.asm
+	$(AS) $(ASFLAGS) $< -o $@
 
 
 # ==================================================
