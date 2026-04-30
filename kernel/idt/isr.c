@@ -12,10 +12,10 @@ void isr_init() {
         isr24, isr25, isr26, isr27, isr28, isr29, isr30, isr31
     };
     for (int i = 0; i < 32; i++) {
-        idt_set_entry(i, (uint32_t)isr_table[i], 0x08, 0x8e);
+        idt_set_entry(i, (uint64_t)isr_table[i], 0x08, 0x8e);
     }
-    idt_set_entry(32, (uint32_t)irq0, 0x08, 0x8e);
-    idt_set_entry(33, (uint32_t)irq1, 0x08, 0x8e);
+    idt_set_entry(32, (uint64_t)irq0, 0x08, 0x8e);
+    idt_set_entry(33, (uint64_t)irq1, 0x08, 0x8e);
 }
 
 static void vga_puts(volatile unsigned short *vga, int ligne, int col, const char *s, unsigned short couleur) {
@@ -27,20 +27,20 @@ static void vga_puts(volatile unsigned short *vga, int ligne, int col, const cha
 }
 
 
-static void vga_puthex(volatile unsigned short *vga, int ligne, int col, uint32_t val, unsigned short couleur) {
-    char buf[11];
+static void vga_puthex(volatile unsigned short *vga, int ligne, int col, uint64_t val, unsigned short couleur) {
+    char buf[19]; // 0x + 16 chiffres + \0
     buf[0] = '0';
     buf[1] = 'x';
     const char hex[] = "0123456789ABCDEF";
-    for (int i = 7; i >= 0; i--) {
+    for (int i = 15; i >= 0; i--) {
         buf[2 + i] = hex[val & 0xF];
         val >>= 4;
     }
-    buf[10] = '\0';
+    buf[18] = '\0';
     vga_puts(vga, ligne, col, buf, couleur);
 }
 
-static void vga_putdec(volatile unsigned short *vga, int ligne, int col, uint32_t val, unsigned short couleur) {
+static void vga_putdec(volatile unsigned short *vga, int ligne, int col, uint64_t val, unsigned short couleur) {
     char buf[12];
     int i = 10;
     buf[11] = '\0';
@@ -598,8 +598,8 @@ void isr_handler(interrupt_frame_t* frame) {
     else if (frame->num == 19) msg = "Error : SIMD FP exception";
     vga_puts(vga, 12, 44, msg, 0x3f00);
 
-    vga_puts(vga, 13, 44, "EIP : ", 0x3f00);
-    vga_puthex(vga, 13, 50, frame->eip, 0x3f00);
+    vga_puts(vga, 13, 44, "RIP : ", 0x3f00);
+    vga_puthex(vga, 13, 50, frame->rip, 0x3f00);
 
     while(1);
 }

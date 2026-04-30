@@ -1,18 +1,30 @@
-[bits 32]
+[BITS 64]  
 [global _start]
-global kernel_stack_top
 [extern kmain]
 
 section .bss
 align 16
 kernel_stack_bottom:
-    resb 16384          ; 16ko
+    resb 16384              
 kernel_stack_top:
 
 section .text
 _start:
-    mov esp, kernel_stack_top   ; initialise la pile avant tout appel C
-    xor ebp, ebp             
+    mov rsp, kernel_stack_top
+    and rsp, ~0xF
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    xor eax, eax            ; FS et GS à 0 pour l'instant
+    mov fs, ax
+    mov gs, ax
+    xor rbp, rbp
+
     call kmain
+
+    ; Sécurité : si kmain retourne quand même
     cli
+.halt:
     hlt
+    jmp .halt

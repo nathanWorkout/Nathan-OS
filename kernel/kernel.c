@@ -14,25 +14,26 @@
 #include "gdt.h"
 #include "ring_buffer.h"
 #include "tss.h"
+#include "gfx.h"
+#include "2d_renderer.h"
+#include "framebuffer.h"
+#include "ssaa.h"
 
-extern char kernel_stack_top[];
+
+//extern char kernel_stack_top[];
 
 void kmain(void) {
  //   serial_print_hex((uint32_t)&kernel_stack_top);
     gdt_init();
     idt_init();
     isr_init();
-
-/*
-    volatile int a = 10;
-    volatile int b = 0;
-    volatile int c = a / b;
-*/
+  
+     
 
     serial_init(); 
     tty_init();
-    pmm_init(0x6000, *(uint16_t*)0x5FFE); // Adresse de la mémory map et le nombre de région
-    pagging_init();
+//    pmm_init(0x6000, *(uint16_t*)0x5FFE); // Adresse de la mémory map et le nombre de région
+//    pagging_init();
     pic_init();
     pit_init(1000);
     __asm__ volatile ("sti");   
@@ -41,6 +42,11 @@ void kmain(void) {
     serial_print_hex(mask);
     tss_init();
     
-    shell_run();
+//    shell_run();
+    void gfx_init(Canvas *cv);
+    Canvas screen = fb_get_canvas();
+    gfx_init(&screen);
+  //  volatile int a = 1 / 0;
     while (1); 
 }
+

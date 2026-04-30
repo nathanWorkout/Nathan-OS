@@ -163,32 +163,120 @@ isr31:
    jmp isr_common
 
 isr_common:
-   pushad
+   push rax
+   push rbx
+   push rcx
+   push rdx
+   push rsi
+   push rdi
+   push rbp
+   push r8
+   push r9
+   push r10
+   push r11
+   push r12
+   push r13
+   push r14
+   push r15
    cld
-   mov eax, esp        ; eax pointe sur le début de la frame
-   push eax            ; on passe ce pointeur à isr_handler
+   
+   mov rdi, rsp
    call isr_handler
-   add esp, 4          ; on nettoie juste le 1 push
-   popad
-   add esp, 8
+
+   pop r15
+   pop r14
+   pop r13
+   pop r12
+   pop r11
+   pop r10
+   pop r9
+   pop r8
+   pop rbp
+   pop rdi
+   pop rsi
+   pop rdx
+   pop rcx
+   pop rbx
+   pop rax
+   add rsp, 8
    iret
 
 irq0:
-   pushad
+   push rax
+   push rbx
+   push rcx
+   push rdx
+   push rsi
+   push rdi
+   push rbp
+   push r8
+   push r9
+   push r10
+   push r11
+   push r12
+   push r13
+   push r14
+   push r15
+
    call irq0_handler
 
    mov al, 0x20
    out 0x20, al
 
-   popad
+   pop r15
+   pop r14
+   pop r13
+   pop r12
+   pop r11
+   pop r10
+   pop r9
+   pop r8
+   pop rbp
+   pop rdi
+   pop rsi
+   pop rdx
+   pop rcx
+   pop rbx
+   pop rax
+
    iret
 
 irq1:
-  pushad
+   push rax
+   push rbx
+   push rcx
+   push rdx
+   push rsi
+   push rdi
+   push rbp
+   push r8
+   push r9
+   push r10
+   push r11
+   push r12
+   push r13
+   push r14
+   push r15
+
   call irq1_handler
 
   mov al, 0x20
   out 0x20, al
 
-  popad
+   pop r15
+   pop r14
+   pop r13
+   pop r12
+   pop r11
+   pop r10
+   pop r9
+   pop r8
+   pop rbp
+   pop rdi
+   pop rsi
+   pop rdx
+   pop rcx
+   pop rbx
+   pop rax
+
   iret
