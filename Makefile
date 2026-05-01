@@ -4,7 +4,7 @@ CC  = x86_64-elf-gcc
 AS  = nasm
 LD  = x86_64-elf-ld
 
-# Flags compilateur 
+# Flags compilateur
 CFLAGS = \
     -m64                  \
     -mcmodel=kernel       \
@@ -28,7 +28,7 @@ CFLAGS = \
     -I kernel/shell       \
     -I kernel/lib         \
     -I kernel/proc        \
-		-I kernel/Graphic
+    -I kernel/Graphic
 
 ASFLAGS = -f elf64
 

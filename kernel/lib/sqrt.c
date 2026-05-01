@@ -1,22 +1,18 @@
-double NAN() {
-    return 0.0 / 0.0;
-}
+#include <stdint.h>
 
-double sqrt(double x) {
-    double y = x; 
+int64_t sqrt(int64_t x) {
+    if (x <= 0) return 0;
+    int64_t n = x * 1000000LL;
 
-    if (x < 0.0) return NAN(); 
+    int64_t y = 1;
+    int64_t tmp = n;
+    while (tmp > 0) { tmp >>= 2; y <<= 1; } 
+    
 
-    if (x == 0.0) return 0.0;
-
-    for (int i = 0; i < 10; i++) {
-        double y_old = y;
-        y = (y + x / y) / 2;
-        double difference = y_old - y;
-        if (difference < 0) difference = -difference;
-        if (difference < 0.000001) break;
+    for (int i = 0; i < 16; i++) {
+        int64_t y_next = (y + n / y) / 2;
+        if (y_next >= y) break;
+        y = y_next;
     }
-
-
     return y;
 }

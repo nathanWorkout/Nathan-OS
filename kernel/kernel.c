@@ -18,6 +18,9 @@
 #include "2d_renderer.h"
 #include "framebuffer.h"
 #include "ssaa.h"
+#include "sqrt.h"
+#include "sdf.h"
+#include "rgba.h"
 
 
 //extern char kernel_stack_top[];
@@ -43,9 +46,10 @@ void kmain(void) {
     tss_init();
     
 //    shell_run();
-    void gfx_init(Canvas *cv);
+    serial_print_hex(sqrt(3600));
     Canvas screen = fb_get_canvas();
     gfx_init(&screen);
+    
   //  volatile int a = 1 / 0;
     while (1); 
 }
