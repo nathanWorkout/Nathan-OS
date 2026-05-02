@@ -24,5 +24,3 @@ void draw_rectangle(Canvas *cv, int x, int y, int w, int h, uint32_t color) {
         }
     }
 }
-
-

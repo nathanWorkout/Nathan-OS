@@ -62,16 +62,3 @@ void draw_trait(Canvas *cv, int px, int py, int64_t dist, int64_t thickness, uin
     put_pixel(cv, px, py, rgba(r, g, b, 0xFF));
 }
 
-void draw_error_screen(Canvas *cv, uint32_t *data, int w, int h) {
-    for (int dy = 0; dy < (int)cv->height; dy++) {
-        for (int dx = 0; dx < (int)cv->width; dx++) {
-            int src_x = (int)((int64_t)dx * w / (int64_t)cv->width);
-            int src_y = (int)((int64_t)dy * h / (int64_t)cv->height);
-            uint32_t color = data[src_y * w + src_x];
-            put_pixel(cv, dx, dy,
-                rgba((color >> 16) & 0xFF,
-                     (color >> 8)  & 0xFF,
-                      color        & 0xFF, 0xFF));
-        }
-    }
-}
