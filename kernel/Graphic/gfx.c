@@ -5,6 +5,7 @@
 #include "ssaa.h"
 #include "sdf.h"
 #include "rgba.h"
+#include "wolf.h"
 
 void put_pixel(Canvas *cv, uint64_t x, uint64_t y, uint32_t color) {
     if (x >= cv->width || y >= cv->height) return;
@@ -26,15 +27,5 @@ void clear_screen(Canvas *cv) {
 }
 
 void gfx_init(Canvas *cv) {
-    color_screen(cv, rgba(10, 10, 35, 255));
-    
-    int lune_x = cv->width / 4;
-    int lune_y = cv->height / 2;
-    int lune_r = cv->height / 6;
-    draw_circle_sdf(cv, lune_x, lune_y, lune_r, rgba(255, 220, 50, 255));
-
-    int sol_y = cv->height * 21 / 25;
-    int sol_h = cv->height - sol_y;
-    draw_rectangle(cv, 0, sol_y, cv->width, sol_h, rgba(20, 80, 20, 255));
-    draw_error_screen(cv);
+    draw_error_screen(cv, wolf_data, WOLF_W, WOLF_H);
 }

@@ -9,7 +9,7 @@ int64_t sqrt(int64_t x) {
     while (tmp > 0) { tmp >>= 2; y <<= 1; } 
     
 
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 32; i++) {
         int64_t y_next = (y + n / y) / 2;
         if (y_next >= y) break;
         y = y_next;
