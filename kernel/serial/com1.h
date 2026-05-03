@@ -5,6 +5,6 @@ void serial_init();
 void serial_putchar(char c);
 void serial_print(char *str);
 void serial_println(char *str);
-void serial_print_hex(uint32_t n); 
+void serial_print_hex(uint64_t n); 
 
 #endif

@@ -3,6 +3,7 @@
 #include "com1.h"
 #include "io.h"
 #include "ring_buffer.h"
+#include "pic8089.h"
 
 static bool shift;
 
@@ -132,29 +133,20 @@ static char scancode_table_shift[128] = {
     [0x53] = '.',
 };
 
-void irq1_handler() { 
-
+void irq1_handler(uint64_t *regs) {
+    (void)regs;
     uint8_t scancode = inb(0x60);
 
     if (scancode & 0x80) {
-      if (scancode == 0xAA || scancode == 0xB6) shift = 0;
-        outb(0x20, 0x20);
-        return;
-    } 
-
-    if(scancode == 0x2A || scancode == 0x36) {shift = 1;} // Shift left & right
-    if(scancode == 0xAA || scancode == 0xB6) {shift = 0;}
-
-    char c = scancode_table[scancode];
-    char c_shift = scancode_table_shift[scancode];
- 
-    if(shift && c_shift) {
-        input_push(c_shift);
-    } else if(c) {
-        input_push(c);
+        if (scancode == 0xAA || scancode == 0xB6) shift = 0;
+    } else {
+        if (scancode == 0x2A || scancode == 0x36) shift = 1;
+        else if (scancode == 0xAA || scancode == 0xB6) shift = 0;
+        else {
+            char c = shift ? scancode_table_shift[scancode] : scancode_table[scancode];
+            if (c) input_push(c);
+        }
     }
 
-    outb(0x20, 0x20);
+    pic_send_eoi(1);
 }
-
-

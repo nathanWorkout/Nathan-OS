@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "com1.h"
 
 typedef struct __attribute__((packed)) {
     uint16_t limit_low;    
@@ -14,7 +15,7 @@ typedef struct __attribute__((packed)) {
     uint64_t base;   
 } gdt_descriptor_t;
 
-static gdt_entry_t gdt[7];
+gdt_entry_t gdt[7];
 static gdt_descriptor_t gdtr;
 
 static void gdt_set_entry(int i, uint64_t base, uint64_t limit, uint8_t access, uint8_t flags) {
@@ -46,9 +47,9 @@ static inline void gdt_load(gdt_descriptor_t *gdtr) {
 void gdt_init(void) {
     gdt_set_entry(0, 0, 0, 0, 0);
     gdt_set_entry(1, 0x00000000, 0x000FFFFF, 0x9A, 0xA0);
-    gdt_set_entry(2, 0x00000000, 0x000FFFFF, 0x92, 0xCF);
+    gdt_set_entry(2, 0x00000000, 0x000FFFFF, 0x92, 0x80);
     gdt_set_entry(3, 0x00000000, 0x000FFFFF, 0xFA, 0xA0);
-    gdt_set_entry(4, 0x00000000, 0x000FFFFF, 0xF2, 0xCF);
+    gdt_set_entry(4, 0x00000000, 0x000FFFFF, 0xF2, 0x80);
     gdt_set_entry(5, 0, 0, 0x89, 0);
     gdt_set_entry(6, 0, 0, 0, 0);
 
@@ -56,6 +57,9 @@ void gdt_init(void) {
     gdtr.base  = (uint64_t)&gdt;
 
     gdt_load(&gdtr);
+
+    uint16_t ss;
+    __asm__ volatile ("mov %%ss, %0" : "=r"(ss));
 }
 
 void gdt_set_tss_entry(uint64_t base, uint64_t limit) {
@@ -63,4 +67,5 @@ void gdt_set_tss_entry(uint64_t base, uint64_t limit) {
     uint32_t *high = (uint32_t *)&gdt[6];
     high[0] = (base >> 32) & 0xFFFFFFFF;
     high[1] = 0;
+    gdt_load(&gdtr);
 }

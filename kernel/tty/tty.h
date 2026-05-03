@@ -10,8 +10,10 @@ void tty_init();
 void putchar(char c);
 void puts(char *s);
 int printk(const char *fmt, ...);
-void tty_set_color(unsigned char c);
+void tty_set_color(uint32_t c);
 void tty_clear();
 void tty_reboot();
+void tty_draw_cursor(int visible);
+void tty_test();
 
 #endif

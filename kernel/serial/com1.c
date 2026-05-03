@@ -33,19 +33,19 @@ void serial_println(char *str) {
     serial_print("\n");
 }
 
-void serial_print_hex(uint32_t n) {
+void serial_print_hex(uint64_t n) {
     char hex[] = "0123456789ABCDEF";
-    char buffer[11]; // 0x + 8 char + \0
+    char buffer[19]; // 0x + 16 char + \0
     
     buffer[0] = '0';
     buffer[1] = 'x';
 
-    for(int i = 0; i < 8; i++) {
-        buffer[9 - i] = hex[n & 0xF];
+    for(int i = 0; i < 16; i++) {
+        buffer[17 - i] = hex[n & 0xF];
         n >>= 4;
     }
 
-    buffer[10] = '\0';
+    buffer[18] = '\0';
 
     serial_print(buffer);
 }

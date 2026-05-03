@@ -2,11 +2,8 @@
 #include "com1.h"
 #include "keyboard.h"
 
-void irq0_handler() {
-  
-// Test
-    static uint32_t ticks = 0;
-    ticks++;
-//    serial_println("ticks");
+volatile uint64_t pit_ticks = 0;
 
+void irq0_handler() {
+    pit_ticks++;
 }

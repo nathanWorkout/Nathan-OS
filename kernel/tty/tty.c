@@ -1,111 +1,82 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include "com1.h"
+#include "gfx.h"
+#include "framebuffer.h"
+#include "font.h"
+#include "rgba.h"
+#include "2d_renderer.h"
 
-#define vga_width 80
+#define SCALE 1
+#define CHAR_W (8 * SCALE)
+#define CHAR_H (16 * SCALE)
+#define TTY_COLS (1280 / CHAR_W)
+#define TTY_ROWS (720  / CHAR_H)
 
+static Canvas cv;
 static int cursor_x = 0;
 static int cursor_y = 0;
-static unsigned char couleur = 0x1f;
+static uint32_t color = 0xFFFFFFFF; 
 
 static inline void outb(uint16_t port, uint8_t val) {
-    __asm__ volatile ("outb %0, %1" : : "a"(val), "nd"(port)); // val dans eax et port dans dx e envoie eax -> dx
+    __asm__ volatile ("outb %0, %1" : : "a"(val), "nd"(port));
 }
 
-static inline uint8_t inb(uint16_t port) {
-    uint8_t val;
-    __asm__ volatile ("inb %1, %0" : "=a"(val) : "nd"(port)); // lit l'octet depuis le port hardware et fait int eax, val
-    return val;
-}
-
-
-
-void enable_cursor(uint8_t cursor_start, uint8_t cursor_end) {
-    outb(0x3d4, 0x0a);
-    outb(0x3d5, 0x00);
-    outb(0x3d4, 0x0b);
-    outb(0x3d5, 0x00);
-}
-
-void update_cursor(int x, int y) {
-    uint16_t pos = y * vga_width + x;
-    outb((uint16_t)0x3D4, 0x0f);
-    outb((uint16_t)0x3D5, (uint8_t)(pos & 0xff));
-    outb((uint16_t)0x3D4, 0x0e);
-    outb((uint16_t)0x3D5, (uint8_t)((pos >> 8) & 0xff));
-}
-
-// lit les 8 bits de poid fort et 8 de poid faible pour reformer la position de 16 bits
-uint16_t get_cursor_position(void) {
-    uint16_t pos = 0; // on lit les 8 bits de poid faible et on les met dans pos
-    outb(0x3d4, 0x0f);
-    pos |= inb(0x3d5);// on lit les 8 bits de poid fort
-    outb(0x3d4, 0x0e);
-    pos |= ((uint16_t)inb(0x3d5)) << 8;// inb lit un octet depuis le port hardware
-
-    return pos;
-}
-
-void tty_init() {
-    enable_cursor(13, 15); // curseur bas
-			   
+void tty_init(Canvas c) {
+    cv = c;
     cursor_x = 0;
     cursor_y = 0;
+    // désactive le curseur VGA hardware
+    outb(0x3d4, 0x0a);
+    outb(0x3d5, 0x20);
 
-    volatile unsigned short *vga = (unsigned short *) 0xb8000;
-
-    for(int i = 0; i < 80 * 25; i++){
-    	vga[i] = (couleur << 8) | ' '; // signé 8 bits car 0-7 : caractère, 8-15 : couleur
-    }
-
-    update_cursor(cursor_x, cursor_y);
+    color_screen(&cv, 0x00000000);
 }
 
 void putchar(char c) {
-    volatile unsigned short *vga = (unsigned short *) 0xb8000;
-
     switch(c) {
-    	case '\n': cursor_y++; cursor_x = 0; break; // entrée
-    	case '\r': cursor_x = 0; break; // certains terminaux envoient \r\n ensemble pour un retour à la ligne (convention windows ou dos) 
-    	case '\t': cursor_x += 4; break; // tab (4 espaces parce que c'est plus pratique pour coder :)
-
-    case '\b':
-      if(cursor_x > 0) cursor_x--;
-      vga[cursor_y * 80 + cursor_x] = (couleur << 8) | ' ';
-  
-    break;
-	default:
-	    vga[cursor_y * 80 + cursor_x] = (couleur <<8) | c;
-	    cursor_x++;
+        case '\n': cursor_y++; cursor_x = 0; break;
+        case '\r': cursor_x = 0; break;
+        case '\t': cursor_x += 4; break;
+        case '\b':
+        if (cursor_x > 0) {
+            cursor_x--;
+            draw_rectangle(&cv, cursor_x * CHAR_W, cursor_y * CHAR_H, CHAR_W, CHAR_H, 0x000000);
+        }
+        break;
+			
+        default:
+            draw_char(&cv, c, cursor_x * CHAR_W, cursor_y * CHAR_H, color, SCALE);
+            cursor_x++;
+            break;
     }
 
-    if(cursor_x >= 80) {
-    	cursor_x = 0;
-	    cursor_y++;
+    if(cursor_x >= TTY_COLS) {
+        cursor_x = 0;
+        cursor_y++;
     }
 
-    // on parcours toutes les lignes, puis on les décale de - 1 et on efface la premiere
-    if(cursor_y >= 25) {
-	    for(int a = 1; a <= 24; a++) {
-	      for(int b = 0; b <= 79; b++) {
-		      vga[(a - 1) * 80 + b] = vga[a * 80 + b];
-	      }
-	    }
-
-	    for(int b = 0; b <= 79; b++) {
-	      vga[24 * 80 + b] = (couleur << 8) | ' ';
-	    }
-      cursor_y = 24;
-	    cursor_x = 0;
+    if(cursor_y >= TTY_ROWS) {
+        for(int y = 1; y < TTY_ROWS; y++) {
+            for(int x = 0; x < TTY_COLS; x++) {
+                for(int py = 0; py < CHAR_H; py++) {
+                    for(int px = 0; px < CHAR_W; px++) {
+                        uint32_t pixel = cv.address[(y * CHAR_H + py) * (cv.pitch / 4) + x * CHAR_W + px];
+                        cv.address[((y-1) * CHAR_H + py) * (cv.pitch / 4) + x * CHAR_W + px] = pixel;
+                    }
+                }
+            }
+        }
+        draw_rectangle(&cv, 0, (TTY_ROWS - 1) * CHAR_H, cv.width, CHAR_H, 0x000000);
+        cursor_y = TTY_ROWS - 1;
+        cursor_x = 0;
     }
-    
-    update_cursor(cursor_x, cursor_y);
 }
 
 void puts(char *s) {
     while(*s != '\0') {
-	putchar(*s);
-	s++;
+        putchar(*s);
+        s++;
     }
     putchar('\n');
 }
@@ -116,89 +87,66 @@ int printk(const char *fmt, ...) {
     int count = 0;
 
     while(*fmt) {
-
-	if(*fmt == '%') {
-	    fmt++;
-
-	    switch(*fmt) {
-		case 'c':
-			char c = (char)va_arg(args, int); // pas va_arg(args, char) car il pousse toujours minimum 4 octets sur la stack 
-			putchar(c);			  // dcoup A = 00 00 00 00 41 dcoup char lit 00 mais int lit tout
-			count++;
-			break;
-
-		case 's':
-			char *s = va_arg(args, char*);
-			while(*s) { // Tant que c pas \0
-			    putchar(*s);
-			    s++;
-			    count++;
-			}
-			break;
-
-		case 'd':
-			// n = 1234
-			// 1234 % 10 = 4
-			// 123 % 10 = 12
-			// 12 % 10 = 1
-			// 1 % 10 = 0 -> fin de boucle
-			char buffer[20];
-			int i = 19;
-			int n = va_arg(args, int);
-
-			if(n == 0) {
-			    buffer[i--] = '0';
-			} 
-
-			while(n > 0) {
-			    buffer[i--] = '0' + (n % 10); // 10 car base 10
-			    n /= 10; // n = n / 10
-			}
-
-			while(++i < 20) {
-			    putchar(buffer[i]);
-			    count++;
-			}
-
-			break;
-	    }
-	fmt++;
-
-	} else {
-	    putchar(*fmt);
-	    fmt++;
-	    count++;
-	}
-
+        if(*fmt == '%') {
+            fmt++;
+            switch(*fmt) {
+                case 'c': {
+                    char c = (char)va_arg(args, int);
+                    putchar(c);
+                    count++;
+                    break;
+                }
+                case 's': {
+                    char *s = va_arg(args, char*);
+                    while(*s) { putchar(*s++); count++; }
+                    break;
+                }
+                case 'd': {
+                    char buffer[20];
+                    int i = 19;
+                    int n = va_arg(args, int);
+                    if(n == 0) { buffer[i--] = '0'; }
+                    while(n > 0) { buffer[i--] = '0' + (n % 10); n /= 10; }
+                    while(++i < 20) { putchar(buffer[i]); count++; }
+                    break;
+                }
+                case 'x': {
+                    char buf[19];
+                    buf[0] = '0'; buf[1] = 'x';
+                    const char hex[] = "0123456789ABCDEF";
+                    uint64_t n = va_arg(args, uint64_t);
+                    for(int i = 15; i >= 0; i--) { buf[2+i] = hex[n & 0xF]; n >>= 4; }
+                    buf[18] = '\0';
+                    for(int i = 0; buf[i]; i++) { putchar(buf[i]); count++; }
+                    break;
+                }
+            }
+            fmt++;
+        } else {
+            putchar(*fmt);
+            fmt++;
+            count++;
+        }
     }
 
-    update_cursor(cursor_x, cursor_y);
     va_end(args);
-    return count; // Retourne le nombre de caractère sinon -1 
+    return count;
 }
 
-void tty_set_color(unsigned char c) {
-    couleur = c;
+void tty_set_color(uint32_t c) {
+    color = c;
 }
-
 void tty_clear() {
-    volatile unsigned short *vga = (unsigned short *) 0xb8000;
-
-    unsigned char old = couleur;
-    couleur = 0x1f; // blanc
-
-    for(int i = 0; i < 80 * 25; i++) {
-        vga[i] = (couleur << 8) | ' ';
-    }
-
-    couleur = old;
-
+    color_screen(&cv, 0x00000000);
     cursor_x = 0;
     cursor_y = 0;
-
-    update_cursor(cursor_x, cursor_y);
 }
 
 void tty_reboot() {
-  outb(0x64, 0xFE);
+    outb(0x64, 0xFE);
+}
+
+void tty_draw_cursor(int visible) {
+    uint32_t col = visible ? color : 0x000000;
+    draw_rectangle(&cv, cursor_x * CHAR_W, cursor_y * CHAR_H, CHAR_W, CHAR_H, col);
 }

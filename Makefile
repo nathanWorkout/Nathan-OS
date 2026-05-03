@@ -13,7 +13,7 @@ CFLAGS = \
     -mno-sse              \
     -ffreestanding        \
     -fno-stack-protector  \
-    -O2                   \
+    -O0                   \
     -Wall -Wextra         \
     -I kernel             \
     -I kernel/idt         \

@@ -1,29 +1,31 @@
-[BITS 64]  
+[BITS 64]
 [global _start]
+[global kernel_stack_top]
 [extern kmain]
 
 section .bss
 align 16
 kernel_stack_bottom:
-    resb 16384              
+    resb 16384
 kernel_stack_top:
 
 section .text
 _start:
-    mov rsp, kernel_stack_top
-    and rsp, ~0xF
     mov ax, 0x10
+    mov ss, ax
     mov ds, ax
     mov es, ax
-    mov ss, ax
-    xor eax, eax            ; FS et GS à 0 pour l'instant
+    xor ax, ax
     mov fs, ax
     mov gs, ax
+
+    mov rsp, kernel_stack_top
+    and rsp, ~0xF
+
     xor rbp, rbp
 
     call kmain
 
-    ; Sécurité : si kmain retourne quand même
     cli
 .halt:
     hlt

@@ -24,34 +24,23 @@
 #include "font.h"
 #include "kernel_panic.h"
 
-
-//extern char kernel_stack_top[];
-
 void kmain(void) {
- //   serial_print_hex((uint32_t)&kernel_stack_top);
     gdt_init();
     idt_init();
     isr_init();
-  
-     
-
-    serial_init(); 
-    tty_init();
-//    pmm_init(0x6000, *(uint16_t*)0x5FFE); // Adresse de la mémory map et le nombre de région
-//    pagging_init();
+    serial_init();
     pic_init();
     pit_init(1000);
-    __asm__ volatile ("sti");   
-    pic_clear_mask(1);
-    uint8_t mask = inb(0x21);
-    serial_print_hex(mask);
     tss_init();
     
-//    shell_run();
     Canvas screen = fb_get_canvas();
     gfx_init(&screen);
-    
-    volatile int a = 1 / 0;
-    while (1); 
-}
+    tty_init(screen);  
+    //volatile int x = 1 / 0;
 
+    __asm__ volatile ("sti");
+    pic_clear_mask(0); 
+    pic_clear_mask(1); 
+    shell_run();
+    while (1);
+}
