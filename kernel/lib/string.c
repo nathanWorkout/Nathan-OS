@@ -22,3 +22,9 @@ int strncmp(const char *s1, const char *s2, uint32_t n) {
       }
   return 0;
 }
+
+int strlen(const char *s) {
+    int i = 0;
+    while (s[i]) i++;
+    return i;
+}

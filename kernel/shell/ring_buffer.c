@@ -5,6 +5,11 @@
 #include "rgba.h"
 #include "com1.h"
 
+
+#define VERSION "0.1"
+#define BUILD_DATE __DATE__
+#define BUILD_TIME __TIME__
+#define TTY_COLS 160
 #define COL_PROMPT   rgba(255, 176,   0, 255)
 #define COL_INPUT    rgba(255, 204, 100, 255)
 #define COL_OUTPUT   rgba(255, 140,   0, 255)
@@ -73,9 +78,45 @@ void readline(char *buffer, int max) {
     buffer[i] = '\0';
 }
 
+// ==================== Personnalisation =======================
+
+int strlen(const char *s);
+
+void print_centered(const char *str) {
+    int pad = (TTY_COLS - strlen(str)) / 2;
+    for (int i = 0; i < pad; i++) putchar(' ');
+    puts(str);
+}
+
+void print_motd() {
+    putchar('\n');
+    putchar('\n');
+    putchar('\n');
+    tty_set_color(rgba(255, 176, 0, 255));
+    print_centered("888     888                  888 888          .d88888b.   .d8888b.");
+    print_centered("888     888                  888 888         d88P\"Y88b d88P  Y88b");
+    print_centered("Y88b   d88P 8888b.  888  888 888 888888      888     888  \"Y888b.");
+    print_centered("Y88b d88P     \"88b 888  888 888 888         888     888     \"Y88b.");
+    print_centered("  Y88o88P  .d888888 888  888 888 888  888888 888     888       \"888");
+    print_centered("   Y888P   888  888 Y88b 888 888 Y88b.       Y88b. .d88P Y88b  d88P");
+    print_centered("    Y8P    \"Y888888  \"Y88888 888  \"Y888       \"Y88888P\"   \"Y8888P\"");
+    putchar('\n');
+    tty_set_color(rgba(255, 140, 0, 255));
+    print_centered("Version " VERSION " - " BUILD_DATE " - " BUILD_TIME);
+    putchar('\n');
+    tty_set_color(rgba(200, 80, 0, 255));
+   // print_centered("================================================================================");
+    print_centered("--------------------------------------------------------------------------------");
+    putchar('\n');
+    tty_set_color(rgba(255, 204, 100, 255));
+    print_centered("Type 'help' for available commands.");
+    putchar('\n');
+}
+
 void shell_run() {
     char buf[256];
 
+    print_motd();
     while (1) {
         
         tty_set_color(COL_PROMPT);

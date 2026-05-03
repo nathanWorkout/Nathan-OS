@@ -6,6 +6,7 @@
 #include "font.h"
 #include "rgba.h"
 #include "2d_renderer.h"
+#include "io.h"
 
 #define SCALE 1
 #define CHAR_W (8 * SCALE)
@@ -18,9 +19,6 @@ static int cursor_x = 0;
 static int cursor_y = 0;
 static uint32_t color = 0xFFFFFFFF; 
 
-static inline void outb(uint16_t port, uint8_t val) {
-    __asm__ volatile ("outb %0, %1" : : "a"(val), "nd"(port));
-}
 
 void tty_init(Canvas c) {
     cv = c;
@@ -143,7 +141,19 @@ void tty_clear() {
 }
 
 void tty_reboot() {
+    // Méthode 1 
+    uint8_t val = inb(0x64);
+    while (val & 0x02) val = inb(0x64); 
     outb(0x64, 0xFE);
+    
+    // Méthode 2 : triple fault 
+    __asm__ volatile (
+        "lidt 0\n"
+        "int $3\n"
+    );
+    
+    // Méthode 3 : boucle infinie au pire
+    while(1) __asm__ volatile("hlt");
 }
 
 void tty_draw_cursor(int visible) {
