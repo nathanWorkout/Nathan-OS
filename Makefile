@@ -1,8 +1,8 @@
-
 # Outils 
 CC  = x86_64-elf-gcc
 AS  = nasm
 LD  = x86_64-elf-ld
+LDFLAGS = -m elf_x86_64 -T linker.ld -nostdlib
 
 # Flags compilateur
 CFLAGS = \
@@ -32,14 +32,10 @@ CFLAGS = \
 
 ASFLAGS = -f elf64
 
-LDFLAGS = -m elf_x86_64 -T linker.ld --no-warn-rwx-segments -nostdlib
-
-
 BUILD  = build
 KERNEL = kernel
 IMG    = boot.img
-LIMINE = $(HOME)/limine
-
+LIMINE = /usr/share/limine
 
 C_SRCS = \
     $(wildcard $(KERNEL)/*.c)                   \
@@ -54,14 +50,12 @@ C_SRCS = \
     $(wildcard $(KERNEL)/drivers/keyboard/*.c)  \
     $(wildcard $(KERNEL)/shell/*.c)             \
     $(wildcard $(KERNEL)/proc/*.c)              \
-		$(wildcard $(KERNEL)/Graphic/*.c) 
-
+    $(wildcard $(KERNEL)/Graphic/*.c)
 
 ASM_SRCS = \
     $(filter-out $(KERNEL)/entry.asm, $(wildcard $(KERNEL)/*.asm)) \
     $(wildcard $(KERNEL)/idt/*.asm)   \
     $(wildcard $(KERNEL)/proc/*.asm)
-
 
 C_OBJS   = $(patsubst %.c,   $(BUILD)/%.o, $(notdir $(C_SRCS)))
 ASM_OBJS = $(patsubst %.asm, $(BUILD)/%.o, $(notdir $(ASM_SRCS)))
@@ -71,12 +65,9 @@ all: $(BUILD)/kernel.elf
 $(BUILD)/kernel.elf: $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS) linker.ld
 	$(LD) $(LDFLAGS) -o $@ $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS)
 	@echo "[OK] kernel.elf généré"
-	@x86_64-elf-readelf -h $@ | grep "Class" 
-	@x86_64-elf-readelf -S $@ | grep -E "\.text|\.rodata|\.data|\.bss"
 
 $(BUILD)/entry.o: $(KERNEL)/entry.asm
 	$(AS) $(ASFLAGS) $< -o $@
-
 
 $(BUILD)/%.o: $(KERNEL)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -105,8 +96,6 @@ $(BUILD)/%.o: $(KERNEL)/proc/%.c
 $(BUILD)/%.o: $(KERNEL)/Graphic/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-
-# Règles génériques ASM
 $(BUILD)/%.o: $(KERNEL)/%.asm
 	$(AS) $(ASFLAGS) $< -o $@
 $(BUILD)/%.o: $(KERNEL)/idt/%.asm
@@ -121,11 +110,10 @@ img: $(BUILD)/kernel.elf
 	mformat -i $(IMG)@@1M -F -v VAULTOS ::
 	mmd -i $(IMG)@@1M ::/boot
 	mcopy -i $(IMG)@@1M $(BUILD)/kernel.elf ::/boot/kernel.elf
-	mcopy -i $(IMG)@@1M limine.conf ::/limine.conf
+	mcopy -i $(IMG)@@1M limine.conf ::/boot/limine.cfg
 	mcopy -i $(IMG)@@1M $(LIMINE)/limine-bios.sys ::/limine-bios.sys
-	$(LIMINE)/limine bios-install $(IMG)
-	
-# QEMU
+	limine bios-install $(IMG)
+
 run: $(IMG)
 	qemu-system-x86_64 \
 	    -drive format=raw,file=$(IMG),index=0,media=disk \

@@ -2,6 +2,7 @@
 #define RING_BUFFER_H
 
 #include <stdint.h>
+#include "../Graphic/gfx.h"
 
 #define RING_BUFFER_SIZE 256
 
@@ -14,6 +15,6 @@ typedef struct {
 void input_push(char c);
 char input_pop();
 int input_has_data();
-void shell_run();
+void shell_run(Canvas *cv);
 
 #endif
