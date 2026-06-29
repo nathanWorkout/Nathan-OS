@@ -18,6 +18,7 @@
 #define PDP_INDEX(virt)    (((virt) >> 30) & 0x1FF)
 #define PD_INDEX(virt)     (((virt) >> 21) & 0x1FF)
 #define PT_INDEX(virt)     (((virt) >> 12) & 0x1FF)
+#define PAGE_NX (1ULL << 63)
 
 typedef struct {
     uint64_t entries[512];
@@ -46,5 +47,8 @@ int vmm_map(address_space_t *space, uint64_t virt, uint64_t phys, uint64_t flags
 int vmm_unmap(address_space_t *space, uint64_t virt);
 address_space_t *vmm_create_kernel_space(void);
 void vmm_switch_space(address_space_t *space);
+void enable_nxe(void);
+void enable_wp(void);
+void vmm_apply_nx(address_space_t *space);
 
 #endif

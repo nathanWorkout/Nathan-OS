@@ -5,6 +5,10 @@
 #include "com1.h"
 #include "../limine_request.h"
 
+extern char _text_start,   _text_end;
+extern char _rodata_start, _rodata_end;
+extern char _data_start,   _data_end;
+
 int vmm_map(address_space_t *space, uint64_t virt, uint64_t phys, uint64_t flags) {
     uint64_t pml4_idx    = PML4_INDEX(virt);
     uint64_t pdp_idx     = PDP_INDEX(virt);
@@ -132,4 +136,33 @@ address_space_t *vmm_create_kernel_space(void) {
 
     serial_print("[VMM] kernel space create\n");
     return &kernel_space_static;
+}
+
+// Premières fonctions de ma forteresse
+void enable_nxe(void) {
+    uint64_t efer;
+    asm volatile("rdmsr" : "=A"(efer) : "c"(0xC0000080));
+    efer |= (1ULL << 11);  // bit 11 = NXE
+    asm volatile("wrmsr" :: "A"(efer), "c"(0xC0000080));
+}
+
+void enable_wp(void) {
+    uint64_t cr0;
+    asm volatile("mov %%cr0, %0" : "=r"(cr0));
+    cr0 |= (1ULL << 16);
+    asm volatile("mov %0, %%cr0" :: "r"(cr0) : "memory");
+}
+
+void vmm_apply_nx(address_space_t *space) {
+    for (uint64_t a = (uint64_t)&_text_start; a < (uint64_t)&_text_end; a += PAGE_SIZE) {
+        vmm_map(space, a, virt_to_phys(a), PAGE_PRESENT);
+    }
+
+    for (uint64_t a = (uint64_t)&_rodata_start; a < (uint64_t)&_rodata_end; a += PAGE_SIZE) {
+        vmm_map(space, a, virt_to_phys(a), PAGE_PRESENT | PAGE_NX);
+    }
+
+    for (uint64_t a = (uint64_t)&_data_start; a < (uint64_t)&_data_end; a += PAGE_SIZE) {
+        vmm_map(space, a, virt_to_phys(a), PAGE_PRESENT | PAGE_RW | PAGE_NX);
+    }
 }

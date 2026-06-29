@@ -29,6 +29,8 @@ void kmain(void) {
     idt_init();
     isr_init();
     serial_init();
+    enable_nxe();
+    enable_wp();
     pmm_init(memmap_request.response);
     address_space_t *kernel_space = vmm_create_kernel_space();
     if (!kernel_space) {
