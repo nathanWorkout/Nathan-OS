@@ -3,7 +3,6 @@
 #include "idt/isr.h"
 #include "serial/com1.h"
 #include "tty/tty.h"
-// tty c TeleTypeWritter c stylé comme nom
 #include "com1.h"
 #include "pic/pic8089.h"
 #include "pit/pit.h"
@@ -30,9 +29,15 @@ void kmain(void) {
     idt_init();
     isr_init();
     serial_init();
-
     pmm_init(memmap_request.response);
-
+    address_space_t *kernel_space = vmm_create_kernel_space();
+    if (!kernel_space) {
+        serial_print("[KERNEL] FATAL: Failed to create kernel space\n");
+        for (;;);
+    }
+    pmm_init_full(memmap_request.response, kernel_space);
+    vmm_switch_space(kernel_space);
+    pmm_switch_to_full();
     pic_init();
     pit_init(1000);
     tss_init();
@@ -42,11 +47,10 @@ void kmain(void) {
     tty_init(screen);
 
     __asm__ volatile ("sti");
-    pic_clear_mask(0); // Timer PIT
-    pic_clear_mask(1); // Clavier
+    pic_clear_mask(0);
+    pic_clear_mask(1);
 
     Canvas cv = fb_get_canvas();
-
     shell_run(&cv);
 
     while (1) {

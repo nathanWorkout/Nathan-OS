@@ -45,5 +45,6 @@ typedef struct {
 int vmm_map(address_space_t *space, uint64_t virt, uint64_t phys, uint64_t flags);
 int vmm_unmap(address_space_t *space, uint64_t virt);
 address_space_t *vmm_create_kernel_space(void);
+void vmm_switch_space(address_space_t *space);
 
 #endif
