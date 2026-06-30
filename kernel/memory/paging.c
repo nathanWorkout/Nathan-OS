@@ -9,6 +9,13 @@ extern char _text_start,   _text_end;
 extern char _rodata_start, _rodata_end;
 extern char _data_start,   _data_end;
 
+static inline uint64_t kernel_virt_to_phys(uint64_t virt) {
+    if (kernel_address_request.response == NULL) return virt;
+    uint64_t virt_base = kernel_address_request.response->virtual_base;
+    uint64_t phys_base = kernel_address_request.response->physical_base;
+    return virt - virt_base + phys_base;
+}
+
 int vmm_map(address_space_t *space, uint64_t virt, uint64_t phys, uint64_t flags) {
     uint64_t pml4_idx    = PML4_INDEX(virt);
     uint64_t pdp_idx     = PDP_INDEX(virt);
@@ -154,15 +161,44 @@ void enable_wp(void) {
 }
 
 void vmm_apply_nx(address_space_t *space) {
-    for (uint64_t a = (uint64_t)&_text_start; a < (uint64_t)&_text_end; a += PAGE_SIZE) {
-        vmm_map(space, a, virt_to_phys(a), PAGE_PRESENT);
+    for (uint64_t a = (uint64_t)&_text_start; a < (uint64_t)&_text_end; a += PAGE_SIZE)
+        vmm_map(space, a, kernel_virt_to_phys(a), PAGE_PRESENT);
+
+    for (uint64_t a = (uint64_t)&_rodata_start; a < (uint64_t)&_rodata_end; a += PAGE_SIZE)
+        vmm_map(space, a, kernel_virt_to_phys(a), PAGE_PRESENT | PAGE_NX);
+
+    for (uint64_t a = (uint64_t)&_data_start; a < (uint64_t)&_data_end; a += PAGE_SIZE)
+        vmm_map(space, a, kernel_virt_to_phys(a), PAGE_PRESENT | PAGE_RW | PAGE_NX);
+}
+
+int vmm_set_readonly(address_space_t *space, uint64_t virt_addr, uint64_t size) {
+    uint64_t first_page = virt_addr & ~(PAGE_SIZE - 1);
+    uint64_t last_page  = (virt_addr + size - 1) & ~(PAGE_SIZE - 1);
+
+    for (uint64_t va = first_page; va <= last_page; va += PAGE_SIZE) {
+        uint64_t pml4_idx = PML4_INDEX(va);
+        uint64_t pdp_idx  = PDP_INDEX(va);
+        uint64_t pd_idx   = PD_INDEX(va);
+        uint64_t pt_idx   = PT_INDEX(va);
+
+        uint64_t *pml4e = &space->pml4t->entries[pml4_idx];
+        if (!(*pml4e & PAGE_PRESENT)) return -1;
+        pdp_t *pdp = (pdp_t *)phys_to_virt(*pml4e & ~0xFFFULL);
+
+        uint64_t *pdpe = &pdp->entries[pdp_idx];
+        if (!(*pdpe & PAGE_PRESENT)) return -1;
+        pd_t *pd = (pd_t *)phys_to_virt(*pdpe & ~0xFFFULL);
+
+        uint64_t *pde = &pd->entries[pd_idx];
+        if (!(*pde & PAGE_PRESENT)) return -1;
+        pt_t *pt = (pt_t *)phys_to_virt(*pde & ~0xFFFULL);
+
+        uint64_t *pte = &pt->entries[pt_idx];
+        if (!(*pte & PAGE_PRESENT)) return -1;
+
+        *pte &= ~PAGE_RW;
+        asm volatile("invlpg (%0)" :: "r"(va) : "memory");
     }
 
-    for (uint64_t a = (uint64_t)&_rodata_start; a < (uint64_t)&_rodata_end; a += PAGE_SIZE) {
-        vmm_map(space, a, virt_to_phys(a), PAGE_PRESENT | PAGE_NX);
-    }
-
-    for (uint64_t a = (uint64_t)&_data_start; a < (uint64_t)&_data_end; a += PAGE_SIZE) {
-        vmm_map(space, a, virt_to_phys(a), PAGE_PRESENT | PAGE_RW | PAGE_NX);
-    }
+    return 0;
 }

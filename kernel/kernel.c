@@ -29,17 +29,25 @@ void kmain(void) {
     idt_init();
     isr_init();
     serial_init();
+
     enable_nxe();
-    enable_wp();
+
     pmm_init(memmap_request.response);
+
     address_space_t *kernel_space = vmm_create_kernel_space();
     if (!kernel_space) {
         serial_print("[KERNEL] FATAL: Failed to create kernel space\n");
         for (;;);
     }
+
     pmm_init_full(memmap_request.response, kernel_space);
+    vmm_apply_nx(kernel_space);
+
     vmm_switch_space(kernel_space);
     pmm_switch_to_full();
+
+    enable_wp();
+
     pic_init();
     pit_init(1000);
     tss_init();

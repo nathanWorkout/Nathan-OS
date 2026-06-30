@@ -50,5 +50,6 @@ void vmm_switch_space(address_space_t *space);
 void enable_nxe(void);
 void enable_wp(void);
 void vmm_apply_nx(address_space_t *space);
+int vmm_set_readonly(address_space_t *space, uint64_t virt_addr, uint64_t size);
 
 #endif
