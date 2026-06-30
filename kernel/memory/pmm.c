@@ -27,8 +27,9 @@ static uint64_t bitmap_phys_pages[MAX_BITMAP_PAGES];
 static uint64_t bitmap_page_count = 0;
 
 void pmm_init(struct limine_memmap_response *memmap) {
-    for (int i = 0; i < BITMAP_SIZE; i++)
+    for (int i = 0; i < BITMAP_SIZE; i++) {
         bootstrap_bitmap[i] = 0xFFFFFFFFFFFFFFFFULL;
+    }
 
     uint64_t kstart = (uint64_t)&kernel_phys_start;
     uint64_t kend   = (uint64_t)&kernel_phys_end;

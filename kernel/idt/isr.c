@@ -28,5 +28,11 @@ void isr_init() {
 void isr_handler(interrupt_frame_t* frame) {
     Canvas cv = fb_get_canvas();
     kernel_panic_init(&cv, frame);
+
+
+     __asm__ volatile ("cli");
+    for (;;) {
+        __asm__ volatile ("hlt");
+    }
     while(1);
 }

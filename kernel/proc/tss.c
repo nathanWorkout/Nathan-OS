@@ -12,3 +12,11 @@ void tss_init() {
     tss.io_map_base = sizeof(tss);
     __asm__ volatile ("ltr %%ax" : : "a"(0x28));
 }
+
+uint64_t tss_get_addr(void) {
+    return (uint64_t)&tss;
+}
+
+uint64_t tss_get_size(void) {
+    return sizeof(tss);
+}

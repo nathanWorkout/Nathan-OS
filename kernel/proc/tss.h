@@ -24,4 +24,7 @@ typedef struct __attribute__((packed)) {
 } tss_t;
 
 void tss_init();
+uint64_t tss_get_addr(void);
+uint64_t tss_get_size(void);
+
 #endif

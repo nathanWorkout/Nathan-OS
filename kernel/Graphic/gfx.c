@@ -10,7 +10,7 @@
 #include "kernel_panic.h"
 
 void put_pixel(Canvas *cv, uint64_t x, uint64_t y, uint32_t color) {
-    if (x >= cv->width || y >= cv->height) return;
+    if (x < 0 || y < 0 || x >= cv->width || y >= cv->height) return;
     uint64_t index = (y * (cv->pitch / 4)) + x;
     cv->address[index] = color;
 }

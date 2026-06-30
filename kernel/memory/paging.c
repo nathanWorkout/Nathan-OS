@@ -111,7 +111,7 @@ int vmm_unmap(address_space_t *space, uint64_t virt) {
 }
 
 void vmm_switch_space(address_space_t *space) {
-    serial_print("[VMM] switch CR3 → 0x");
+    serial_print("[VMM] switch CR3 -> 0x");
     serial_print_hex(space->pml4_phys);
     serial_print("\n");
     asm volatile("mov %0, %%cr3" :: "r"(space->pml4_phys) : "memory");

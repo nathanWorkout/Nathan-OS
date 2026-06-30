@@ -2,6 +2,8 @@
 #define GDT_H
 #include <stdint.h>
 
+#define GDT_ENTRY_COUNT 7
+
 typedef struct __attribute__((packed)) {
     uint16_t limit_low;
     uint16_t base_low;

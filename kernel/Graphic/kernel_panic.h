@@ -1,5 +1,6 @@
 #ifndef KERNEL_PANIC_H
 #define KERNEL_PANIC_H
+#include "idt/isr.h"
 
 #include <stdint.h>
 #include "gfx.h"

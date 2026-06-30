@@ -59,6 +59,7 @@ void draw_string_panic(Canvas *cv) {
 }
 
 void kernel_panic_init(Canvas *cv, interrupt_frame_t *frame) {
+
     draw_error_screen(cv, wolf_data, WOLF_W, WOLF_H);
     draw_string_panic(cv);
 
@@ -92,6 +93,7 @@ void kernel_panic_init(Canvas *cv, interrupt_frame_t *frame) {
     else if (frame->num == 18) msg = "Machine check";
     else if (frame->num == 19) msg = "SIMD FP exception";
 
+
     int rx = cv->width / 2 - 20;
     int ry = 30;
     int rw = cv->width / 2 + 10;  
@@ -101,7 +103,6 @@ void kernel_panic_init(Canvas *cv, interrupt_frame_t *frame) {
     draw_rectangle(cv, rx,           ry + rh - 1, rw, 1,  rgba(80, 255, 200, 255));
     draw_rectangle(cv, rx,           ry,          1,  rh, rgba(80, 255, 200, 255));
     draw_rectangle(cv, rx + rw - 1,  ry,          1,  rh, rgba(80, 255, 200, 255));
-
     draw_rectangle(cv, rx + 8, ry - 4, 8 * 16 * 2, 9, rgba(10, 10, 30, 255));
     draw_string(cv, " Exception info ", rx + 8, ry - 4, rgba(80, 255, 200, 255), 1);
 
@@ -161,4 +162,12 @@ void kernel_panic_init(Canvas *cv, interrupt_frame_t *frame) {
 
     draw_string(cv, "RDI    :", tx, ty, rgba(150, 150, 150, 255), 2);
     draw_hex(cv, tx + 9 * 8 * 2, ty, frame->rdi, rgba(255, 220, 50, 255));
+
+    serial_print("[PANIC] end\n");
+
+
+    __asm__ volatile ("cli");
+    for (;;) {
+        __asm__ volatile ("hlt");
+    }
 }
