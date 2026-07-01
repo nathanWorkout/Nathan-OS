@@ -23,12 +23,16 @@ VaultNode *vaultfs_resolve(VaultFs *fs, uint64_t profile_id, const char *path) {
         if(strcmp(fs->layer1.nodes[j].name, path) == 0) {
 	    return &fs->layer1.nodes[j];
 	}
+
+	break;
     }
 
     for(uint8_t j = 0; j < fs->layer0.count; j++) {
 	if(strcmp(fs->layer0.nodes[j].name, path) == 0) {
 	    return &fs->layer0.nodes[j];
 	}
+
+	break;
     }
 
     return NULL;
