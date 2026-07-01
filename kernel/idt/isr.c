@@ -26,13 +26,12 @@ void isr_init() {
 }
 
 void isr_handler(interrupt_frame_t* frame) {
+    serial_print("[ISR] handler entré\n");
     Canvas cv = fb_get_canvas();
+    serial_print("[ISR] canvas obtenu\n");
+    serial_print("[ISR] adresse FB : ");
+    serial_print_hex((uint64_t)cv.address);
+    serial_print("\n");
     kernel_panic_init(&cv, frame);
-
-
-     __asm__ volatile ("cli");
-    for (;;) {
-        __asm__ volatile ("hlt");
-    }
     while(1);
 }

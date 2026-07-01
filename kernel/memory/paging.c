@@ -3,6 +3,7 @@
 #include "string.h"
 #include "pmm.h"
 #include "com1.h"
+#include "Graphic/framebuffer.h"
 #include "../limine_request.h"
 
 extern char _text_start,   _text_end;
@@ -111,9 +112,6 @@ int vmm_unmap(address_space_t *space, uint64_t virt) {
 }
 
 void vmm_switch_space(address_space_t *space) {
-    serial_print("[VMM] switch CR3 -> 0x");
-    serial_print_hex(space->pml4_phys);
-    serial_print("\n");
     asm volatile("mov %0, %%cr3" :: "r"(space->pml4_phys) : "memory");
 }
 
@@ -121,9 +119,6 @@ static address_space_t kernel_space_static;
 
 address_space_t *vmm_create_kernel_space(void) {
     uint64_t pml4_phys = pmm_alloc_page();
-    serial_print("[VMM] pml4_phys = 0x");
-    serial_print_hex(pml4_phys);
-    serial_print("\n");
     if (!pml4_phys) {
         serial_print("[VMM] FATAL: pmm_alloc_page = 0\n");
         return NULL;
@@ -141,7 +136,6 @@ address_space_t *vmm_create_kernel_space(void) {
     kernel_space_static.pid       = 0;
     kernel_space_static.ref_count = 1;
 
-    serial_print("[VMM] kernel space create\n");
     return &kernel_space_static;
 }
 
@@ -201,4 +195,18 @@ int vmm_set_readonly(address_space_t *space, uint64_t virt_addr, uint64_t size) 
     }
 
     return 0;
+}
+
+void vmm_map_framebuffer(address_space_t *space, Canvas *cv) {
+    uint64_t fb_virt = (uint64_t)cv->address;
+    uint64_t fb_phys = virt_to_phys(fb_virt);
+    uint64_t fb_size = cv->pitch * cv->height;
+    uint64_t pages   = (fb_size + PAGE_SIZE - 1) / PAGE_SIZE;
+
+    for (uint64_t i = 0; i < pages; i++) {
+        vmm_map(space,
+                fb_virt + i * PAGE_SIZE,
+                fb_phys + i * PAGE_SIZE,
+                PAGE_PRESENT | PAGE_RW | PAGE_NX);
+    }
 }

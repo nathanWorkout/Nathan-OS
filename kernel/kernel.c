@@ -44,13 +44,11 @@ void kmain(void) {
     }
 
     pmm_init_full(memmap_request.response, kernel_space);
-    //vmm_apply_nx(kernel_space);
-
+    vmm_apply_nx(kernel_space);
     vmm_switch_space(kernel_space);
     pmm_switch_to_full();
 
     enable_wp();
-
     pic_init();
     pit_init(1000);
     tss_init();
@@ -59,15 +57,14 @@ void kmain(void) {
     vmm_set_readonly(kernel_space, (uint64_t)gdt, sizeof(gdt_entry_t) * GDT_ENTRY_COUNT);
     vmm_set_readonly(kernel_space, tss_get_addr(), tss_get_size());
 
-    Canvas screen = fb_get_canvas();
-
-       // #ifdef TEST_PROTECTION
-    #if 1
-    serial_print("[TEST] Tentative d'ecriture sur l'IDT\n");
+    #if 0
+    serial_print("[TEST] Tentative d'ecriture sur IDT (doit fault)...\n");
     volatile uint8_t *test = (volatile uint8_t *)idt;
     *test = 0xFF;
-    #endif 
+    serial_print("[TEST] ERREUR: l'ecriture a reussi, RO ne fonctionne pas !\n");
+    #endif
 
+    Canvas screen = fb_get_canvas();
     gfx_init(&screen);
     tty_init(screen);
 

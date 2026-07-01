@@ -3,9 +3,9 @@
 #include <stddef.h>
 #include "limine.h"
 
-extern volatile struct limine_memmap_request memmap_request;
-extern volatile struct limine_hhdm_request hhdm_request;
-extern volatile struct limine_kernel_address_request kernel_address_request;
+extern volatile struct limine_memmap_request         memmap_request;
+extern volatile struct limine_hhdm_request           hhdm_request;
+extern volatile struct limine_kernel_address_request kernel_address_request; 
 
 static inline uint64_t phys_to_virt(uint64_t phys) {
     if (hhdm_request.response == NULL) return phys;

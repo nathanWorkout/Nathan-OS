@@ -131,6 +131,8 @@ void pmm_switch_to_full(void) {
     bootstrap_active = 0;
 
     memset(bootstrap_bitmap, 0xFF, sizeof(bootstrap_bitmap));
+
+    serial_print("[PMM] Bootstrap PMM detruit : full PMM active.\n");
 }
 
 uint64_t pmm_alloc_page(void) {
