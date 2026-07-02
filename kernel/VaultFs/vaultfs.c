@@ -38,4 +38,4 @@ VaultNode *vaultfs_resolve(VaultFs *fs, uint64_t profile_id, const char *path) {
     return NULL;
 }
 
-
+void test() {}
