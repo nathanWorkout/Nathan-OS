@@ -1,0 +1,63 @@
+#+title: Todo Vaultfs
+
+#+title: VaultFS - Three State Filesystem
+
+* YES vaultfs_init
+- memset tout à zéro (layers, profils, nodes)
+
+* TODO vaultfs_resolve
+- Chercher dans C2 du profil :
+  - Si trouvé et type == TYPE_DELETED -> NULL (fichier masqué)
+  - Si trouvé -> retourner node C2
+- Chercher dans C1 :
+  - Si trouvé -> retourner node C1
+- Chercher dans C0 :
+  - Si trouvé -> retourner node C0
+- Retourner NULL
+
+* TODO vaultfs_create
+- Trouver le profil
+- Vérifier count < 128
+- Remplir prochain node libre dans layer2 du profil :
+  - Copier nom/chemin
+  - Mettre le type (TYPE_FILE, TYPE_DIR)
+  - data = NULL, size = 0
+- Incrémenter count
+- Retourner pointeur vers node C2
+
+* TODO vaultfs_write
+- target_node = vaultfs_resolve(fs, profile_id, path)
+- Si target_node != NULL :
+  - Si target_node appartient à C0 ou C1 (Copy-On-Write) :
+    - target_node = vaultfs_create(fs, profile_id, path, target_node->type)
+  - Sinon (node déjà dans C2) :
+    - Si target_node->data != NULL → pmm_free_page(target_node->data)
+- Si target_node == NULL :
+  - target_node = vaultfs_create(fs, profile_id, path, TYPE_FILE)
+- Allouer pages avec pmm_alloc_page() selon size
+- Copier data dans les pages
+- target_node->data = pages allouées
+- target_node->size = size
+- Retourner succès
+
+* TODO vaultfs_delete
+- Chercher node dans C2 du profil
+- Si trouvé dans C2 :
+  - Si target_node->data != NULL → pmm_free_page(target_node->data)
+  - Écraser node avec dernier node du tableau C2
+  - Décrémenter count de C2
+- Si non trouvé dans C2 :
+  - Vérifier si fichier existe dans C0 ou C1 :
+    - Si oui :
+      - node_masque = vaultfs_create(fs, profile_id, path, TYPE_DELETED)
+      - node_masque->data = NULL
+      - node_masque->size = 0
+    - Si non → retourner ERREUR_FICHIER_INTROUVABLE
+
+* TODO vaultfs_destroy_profile
+- Trouver le profil
+- Pour chaque node de 0 à (count - 1) dans layer2 :
+  - Si node->data != NULL et node->type != TYPE_DELETED :
+    - pmm_free_page(node->data)
+- Écraser profil actuel avec le dernier profil du tableau
+- Décrémenter profile_count

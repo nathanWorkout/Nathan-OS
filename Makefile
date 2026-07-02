@@ -132,3 +132,6 @@ clean:
 	rm -f $(BUILD)/*.o $(BUILD)/*.elf $(IMG)
 
 .PHONY: all img run debug clean
+
+full: clean img run
+	$(MAKE) -j$(nproc) all

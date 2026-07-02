@@ -1,12 +1,12 @@
 #ifndef VAULTFS_H
 #define VAULTFS_H
-#include <cstdint>
 #include <stdint.h>
 
 typedef enum {
     VAULT_FILE,
     VAULT_DIR,
-    VAULT_SYMLINK
+    VAULT_SYMLINK,
+    VAULT_DELETED
 } VaultNodeType;
 
 typedef struct {
@@ -35,5 +35,6 @@ typedef struct {
 
 void vaultfs_init(VaultFs *fs);
 VaultNode *vaultfs_resolve(VaultFs *fs, uint64_t profile_id, const char *path);
+VaultNode *vaultfs_create(VaultFs *fs, uint64_t profile_id, const char *name, VaultNodeType type);
 
 #endif
