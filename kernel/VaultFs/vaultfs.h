@@ -5,7 +5,6 @@
 typedef enum {
     VAULT_FILE,
     VAULT_DIR,
-    VAULT_SYMLINK,
     VAULT_DELETED
 } VaultNodeType;
 
@@ -14,6 +13,7 @@ typedef struct {
     VaultNodeType type;
     uint8_t *data;
     uint64_t size;
+    uint64_t owner_profile_id;
 } VaultNode;
 
 typedef struct {
@@ -36,5 +36,6 @@ typedef struct {
 void vaultfs_init(VaultFs *fs);
 VaultNode *vaultfs_resolve(VaultFs *fs, uint64_t profile_id, const char *path);
 VaultNode *vaultfs_create(VaultFs *fs, uint64_t profile_id, const char *name, VaultNodeType type);
+int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *data, uint64_t size);
 
 #endif

@@ -1,13 +1,11 @@
-#+title: Todo Vaultfs
-
 #+title: VaultFS - Three State Filesystem
 
 * YES vaultfs_init
 - memset tout à zéro (layers, profils, nodes)
 
-* TODO vaultfs_resolve
+* YES vaultfs_resolve
 - Chercher dans C2 du profil :
-  - Si trouvé et type == TYPE_DELETED -> NULL (fichier masqué)
+  - Si trouvé et type == VAULT_DELETED -> retourner NULL (fichier masqué)
   - Si trouvé -> retourner node C2
 - Chercher dans C1 :
   - Si trouvé -> retourner node C1
@@ -15,49 +13,83 @@
   - Si trouvé -> retourner node C0
 - Retourner NULL
 
-* TODO vaultfs_create
-- Trouver le profil
-- Vérifier count < 128
+* YES vaultfs_create
+- Trouver le profil via profile_id
+- Vérifier count < 128, sinon retourner NULL
 - Remplir prochain node libre dans layer2 du profil :
-  - Copier nom/chemin
-  - Mettre le type (TYPE_FILE, TYPE_DIR)
+  - Copier nom/chemin (max 127 chars + '\0')
+  - Mettre le type (VAULT_FILE, VAULT_DIR, VAULT_DELETED)
   - data = NULL, size = 0
+  - owner_profile_id = 0
 - Incrémenter count
 - Retourner pointeur vers node C2
 
-* TODO vaultfs_write
+* YES vaultfs_write
 - target_node = vaultfs_resolve(fs, profile_id, path)
-- Si target_node != NULL :
-  - Si target_node appartient à C0 ou C1 (Copy-On-Write) :
-    - target_node = vaultfs_create(fs, profile_id, path, target_node->type)
-  - Sinon (node déjà dans C2) :
-    - Si target_node->data != NULL → pmm_free_page(target_node->data)
+- Calculer in_c0 / in_c1 seulement si target_node != NULL
+- Si target_node != NULL et type == VAULT_DIR -> retourner erreur
+- Si in_c0 -> retourner erreur (C0 immuable, même en copie)
 - Si target_node == NULL :
-  - target_node = vaultfs_create(fs, profile_id, path, TYPE_FILE)
-- Allouer pages avec pmm_alloc_page() selon size
-- Copier data dans les pages
-- target_node->data = pages allouées
+  - target_node = vaultfs_create(fs, profile_id, path, VAULT_FILE)
+- Sinon si in_c1 :
+  - target_node = vaultfs_create(fs, profile_id, path, target_node->type) (copy-on-write en C2)
+- Sinon (déjà en C2) :
+  - Si target_node->data != NULL -> pmm_free_page(target_node->data)
+- Si size > PAGE_SIZE -> retourner erreur (limitation V0.1)
+- phys = pmm_alloc_page()
+- Copier data dans phys_to_virt(phys)
+- target_node->data = phys
 - target_node->size = size
 - Retourner succès
 
 * TODO vaultfs_delete
-- Chercher node dans C2 du profil
+- Chercher node dans C2 du profil via path
 - Si trouvé dans C2 :
-  - Si target_node->data != NULL → pmm_free_page(target_node->data)
+  - Si node->data != NULL -> pmm_free_page((uint64_t)node->data)
   - Écraser node avec dernier node du tableau C2
   - Décrémenter count de C2
+  - Retourner succès
 - Si non trouvé dans C2 :
-  - Vérifier si fichier existe dans C0 ou C1 :
-    - Si oui :
-      - node_masque = vaultfs_create(fs, profile_id, path, TYPE_DELETED)
-      - node_masque->data = NULL
-      - node_masque->size = 0
-    - Si non → retourner ERREUR_FICHIER_INTROUVABLE
+  - Chercher dans C1 :
+    - Si trouvé et owner_profile_id != profile_id -> retourner erreur (pas le owner)
+    - Si trouvé et owner_profile_id == profile_id :
+      - Si node->data != NULL -> pmm_free_page((uint64_t)node->data)
+      - Écraser node avec dernier node du tableau C1
+      - Décrémenter count de C1
+      - Retourner succès
+  - Chercher dans C0 :
+    - Si trouvé -> retourner erreur (C0 immuable)
+  - Retourner erreur fichier introuvable
+
+* TODO vaultfs_publish
+- Chercher node dans C2 du profil via profile_id et path
+- Si non trouvé -> retourner erreur
+- Si type == VAULT_DELETED -> retourner erreur
+- Vérifier que C1 count < 128, sinon retourner erreur
+- Copier node dans C1 :
+  - Copier nom, type, data, size
+  - owner_profile_id = profile_id
+- Supprimer node de C2 (écraser avec dernier, décrémenter count)
+- Retourner succès
+
+* TODO vaultfs_depublish
+- Chercher node dans C1 via path
+- Si non trouvé -> retourner erreur
+- Si node->owner_profile_id != profile_id -> retourner erreur (pas le owner)
+- Chercher le profil via profile_id
+- Vérifier que C2 du profil count < 128, sinon retourner erreur
+- Copier node dans C2 du profil :
+  - Copier nom, type, data, size
+  - owner_profile_id = profile_id
+- Supprimer node de C1 (écraser avec dernier, décrémenter count)
+- Retourner succès
 
 * TODO vaultfs_destroy_profile
-- Trouver le profil
+- Trouver le profil via profile_id
+- Si non trouvé -> retourner erreur
 - Pour chaque node de 0 à (count - 1) dans layer2 :
-  - Si node->data != NULL et node->type != TYPE_DELETED :
-    - pmm_free_page(node->data)
+  - Si node->data != NULL et node->type != VAULT_DELETED :
+    - pmm_free_page((uint64_t)node->data)
 - Écraser profil actuel avec le dernier profil du tableau
 - Décrémenter profile_count
+- Retourner succès
