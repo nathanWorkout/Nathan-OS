@@ -178,3 +178,23 @@ int vaultfs_depublish(VaultFs *fs, uint64_t profile_id, const char *path) {
 
     return -1;
 }
+
+int vault_destroy_profile(VaultFs *fs, uint64_t profile_id) {
+    for (uint8_t i = 0; i < fs->profile_count; i++) {
+        if (fs->profiles[i].profile_id == profile_id) {
+            for (uint8_t j = 0; j < fs->profiles[i].layer2.count; j++) {
+              VaultNode *node = &fs->profiles[i].layer2.nodes[j];
+                if (node->data != NULL && node->type != VAULT_DELETED) {
+                  pmm_free_page((uint64_t)node->data);
+                }
+            }
+
+            fs->profiles[i] = fs->profiles[fs->profile_count - 1];
+            fs->profile_count--;
+
+            return 0;
+        }
+    }
+
+    return -1;
+}

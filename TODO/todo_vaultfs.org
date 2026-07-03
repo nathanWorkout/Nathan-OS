@@ -78,19 +78,20 @@
 - Supprimer node de C2 (écraser avec dernier, décrémenter count)
 - Retourner succès
 
-* TODO vaultfs_depublish
+* YES vaultfs_depublish
 - [SYSCALL PRIVILEGIE — shell/GUI uniquement]
-- Chercher node dans C1 via path
-- Si non trouvé -> retourner erreur
-- Si node->owner_profile_id != profile_id -> retourner erreur (pas le owner)
-- Chercher le profil via profile_id
-- Vérifier que C2 du profil count < 128, sinon retourner erreur
-- Copier node dans C2 du profil :
-  - Copier nom, type, data, size
-  - owner_profile_id = profile_id
-- Supprimer node de C1 (écraser avec dernier, décrémenter count)
-- Retourner succès
-
+- Chercher dans C1 (boucle sur fs->layer1) :
+  - Si strcmp(fs->layer1.nodes[j].name, path) == 0 :
+    - Si owner_profile_id != profile_id -> return -1
+    - Trouver le profil (boucle sur fs->profiles) :
+      - Si fs->profiles[i].profile_id == profile_id :
+        - Vérifier fs->profiles[i].layer2.count < 128, sinon return -1
+        - Copier node C1 dans C2 du profil
+        - Mettre owner_profile_id = profile_id sur le node C2
+        - Incrémenter fs->profiles[i].layer2.count
+        - Supprimer node de C1 (écraser avec dernier, décrémenter fs->layer1.count)
+        - retourne succès
+- retourne erreur
 * TODO vaultfs_destroy_profile
 - Trouver le profil via profile_id
 - Si non trouvé -> retourner erreur
