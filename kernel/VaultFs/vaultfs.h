@@ -39,5 +39,6 @@ VaultNode *vaultfs_create(VaultFs *fs, uint64_t profile_id, const char *name, Va
 int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *data, uint64_t size);
 int vaultfs_delete(VaultFs *fs, uint64_t profile_id, const char *path);
 int vaultfs_publish(VaultFs *fs, uint64_t profile_id, const char *path);
+int vaultfs_depublish(VaultFs *fs, uint64_t profile_id, const char *path);
 
 #endif

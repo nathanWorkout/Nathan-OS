@@ -66,7 +66,7 @@
     - Si trouvé -> retourner erreur (C0 immuable)
   - Retourner erreur fichier introuvable
 
-* TODO vaultfs_publish
+* YES vaultfs_publish
 - [SYSCALL PRIVILEGIE — shell/GUI uniquement]
 - Chercher node dans C2 du profil via profile_id et path
 - Si non trouvé -> retourner erreur
