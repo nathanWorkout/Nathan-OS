@@ -58,39 +58,35 @@ VaultNode *vaultfs_create(VaultFs *fs, uint64_t profile_id, const char *name, Va
 int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *data, uint64_t size) {
     // Retourne 0 si succès, -1 si erreur
     VaultNode *node = vaultfs_resolve(fs, profile_id, path);
-
     int in_c0 = 0;
     int in_c1 = 0;
     if (node != NULL) {
         in_c0 = (node >= &fs->layer0.nodes[0] && node < &fs->layer0.nodes[128]);
         in_c1 = (node >= &fs->layer1.nodes[0] && node < &fs->layer1.nodes[128]);
     }
-
     if (node != NULL && node->type == VAULT_DIR) return -1;
-
     if (in_c0) return -1;
 
+    int was_in_c2 = 0;
     if (node == NULL) {
         node = vaultfs_create(fs, profile_id, path, VAULT_FILE);
         if (node == NULL) return -1;
     } else if (in_c1) {
-        node = vaultfs_create(fs, profile_id, path, node->type);
-        if (node == NULL) return -1;
+        node = vaultfs_create(fs, profile_id, path, node->type); // copy on write        if (node == NULL) return -1;
     } else {
-        if (node->data != NULL) {
-            pmm_free_page((uint64_t)node->data);
-            node->data = NULL;
-        }
+        was_in_c2 = 1;
     }
 
     if (size > PAGE_SIZE) return -1; // Temporaire (V0.1 de Three States Filesystem)
-
     uint64_t phys = pmm_alloc_page();
     if (phys == 0) return -1;
 
+    if (was_in_c2 && node->data != NULL) {
+        pmm_free_page((uint64_t)node->data);
+    }
+
     uint8_t *ptr = (uint8_t *)phys_to_virt(phys);
     memcpy(ptr, data, size);
-
     node->data = (uint8_t *)phys;
     node->size = size;
     return 0;

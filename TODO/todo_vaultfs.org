@@ -1,11 +1,12 @@
 #+title: VaultFS - Three State Filesystem
 
 * YES vaultfs_init
-- memset tout à zéro (layers, profils, nodes)
+- memset(fs, 0, sizeof(VaultFs))
+- Met a zero toutes les couches, profils, nodes
 
 * YES vaultfs_resolve
 - Chercher dans C2 du profil :
-  - Si trouvé et type == VAULT_DELETED -> retourner NULL (fichier masqué)
+  - Si trouvé et type == VAULT_DELETED -> retourner NULL (masquage volontaire)
   - Si trouvé -> retourner node C2
 - Chercher dans C1 :
   - Si trouvé -> retourner node C1
@@ -19,34 +20,38 @@
 - Remplir prochain node libre dans layer2 du profil :
   - Copier nom/chemin (max 127 chars + '\0')
   - Mettre le type (VAULT_FILE, VAULT_DIR, VAULT_DELETED)
-  - data = NULL, size = 0
-  - owner_profile_id = 0
+  - data = NULL, size = 0, owner_profile_id = 0
 - Incrémenter count
 - Retourner pointeur vers node C2
 
 * YES vaultfs_write
 - target_node = vaultfs_resolve(fs, profile_id, path)
-- Calculer in_c0 / in_c1 seulement si target_node != NULL
+- Calculer in_c0 / in_c1 SEULEMENT si target_node != NULL
 - Si target_node != NULL et type == VAULT_DIR -> retourner erreur
 - Si in_c0 -> retourner erreur (C0 immuable, même en copie)
 - Si target_node == NULL :
   - target_node = vaultfs_create(fs, profile_id, path, VAULT_FILE)
 - Sinon si in_c1 :
-  - target_node = vaultfs_create(fs, profile_id, path, target_node->type) (copy-on-write en C2)
+  - target_node = vaultfs_create(...) <- copy-on-write en C2
 - Sinon (déjà en C2) :
-  - Si target_node->data != NULL -> pmm_free_page(target_node->data)
-- Si size > PAGE_SIZE -> retourner erreur (limitation V0.1)
-- phys = pmm_alloc_page()
-- Copier data dans phys_to_virt(phys)
-- target_node->data = phys
-- target_node->size = size
-- Retourner succès
+  - NE PAS libérer l'ancienne page ici (voir ordre ci-dessous)
+- VALIDER d'abord :
+  - Si size > PAGE_SIZE -> retourner erreur (limitation V0.1)
+  - phys = pmm_alloc_page()
+  - Si phys == 0 -> retourner erreur
+- SEULEMENT SI allocation réussie :
+  - Si node était en C2 et node->data != NULL -> pmm_free_page(node->data)
+  - memcpy(phys_to_virt(phys), data, size)
+  - target_node->data = phys
+  - target_node->size = size
+- Retourner 0 (succès)
+- NOTE : ordre critique — allouer avant de libérer pour éviter dangling pointer
 
 * TODO vaultfs_delete
 - Chercher node dans C2 du profil via path
 - Si trouvé dans C2 :
   - Si node->data != NULL -> pmm_free_page((uint64_t)node->data)
-  - Écraser node avec dernier node du tableau C2
+  - Ecraser node avec dernier node du tableau C2
   - Décrémenter count de C2
   - Retourner succès
 - Si non trouvé dans C2 :
@@ -54,7 +59,7 @@
     - Si trouvé et owner_profile_id != profile_id -> retourner erreur (pas le owner)
     - Si trouvé et owner_profile_id == profile_id :
       - Si node->data != NULL -> pmm_free_page((uint64_t)node->data)
-      - Écraser node avec dernier node du tableau C1
+      - Ecraser node avec dernier node du tableau C1
       - Décrémenter count de C1
       - Retourner succès
   - Chercher dans C0 :
@@ -62,6 +67,7 @@
   - Retourner erreur fichier introuvable
 
 * TODO vaultfs_publish
+- [SYSCALL PRIVILEGIE — shell/GUI uniquement]
 - Chercher node dans C2 du profil via profile_id et path
 - Si non trouvé -> retourner erreur
 - Si type == VAULT_DELETED -> retourner erreur
@@ -73,6 +79,7 @@
 - Retourner succès
 
 * TODO vaultfs_depublish
+- [SYSCALL PRIVILEGIE — shell/GUI uniquement]
 - Chercher node dans C1 via path
 - Si non trouvé -> retourner erreur
 - Si node->owner_profile_id != profile_id -> retourner erreur (pas le owner)
@@ -90,6 +97,18 @@
 - Pour chaque node de 0 à (count - 1) dans layer2 :
   - Si node->data != NULL et node->type != VAULT_DELETED :
     - pmm_free_page((uint64_t)node->data)
-- Écraser profil actuel avec le dernier profil du tableau
+- Ecraser profil actuel avec le dernier profil du tableau
 - Décrémenter profile_count
 - Retourner succès
+
+* ARCHITECTURE STOCKAGE (hors scope VaultFS V0.1 — composant séparé)
+- RAM (VaultFS) :
+  - C0 : chargé au boot par Limine, immuable
+  - C1 : chargé au boot depuis C1.img, protégé bits paging
+  - C2 : créé à l'ouverture du profil, détruit à la fermeture
+- DISQUE (driver futur) :
+  - C0.img : image core, signée, jamais modifiée
+  - C1.img : image global, mise à jour par publish/depublish
+  - profiles/profil_X.img : snapshot C2 chiffré par profil
+- Persistance C2 : gérée par composant snapshot externe, pas VaultFS
+- Commit explicite : shell/GUI propose sauvegarde avant fermeture profil
