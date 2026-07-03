@@ -21,7 +21,7 @@ VaultNode *vaultfs_resolve(VaultFs *fs, uint64_t profile_id, const char *path) {
 
     for(uint8_t j = 0; j < fs->layer1.count; j++) {
         if(strcmp(fs->layer1.nodes[j].name, path) == 0) {
-	          return &fs->layer1.nodes[j];
+          return &fs->layer1.nodes[j];
         }
     }
 
@@ -135,5 +135,25 @@ int vaultfs_delete(VaultFs *fs, uint64_t profile_id, const char *path) {
 }
 
 int vaultfs_publish(VaultFs *fs, uint64_t profile_id, const char *path) {
+    // syscall privilegie later
+    for (uint8_t i = 0; i < fs->profile_count; i++) {
+        if (fs->profiles[i].profile_id == profile_id) {
+            for (uint8_t j = 0; j < fs->profiles[i].layer2.count; j++) {
+                if (strcmp(fs->profiles[i].layer2.nodes[j].name, path) == 0) {
+                    VaultNode *node = &fs->profiles[i].layer2.nodes[j];
+                    if (fs->profiles[i].layer2.nodes[j].type == VAULT_DELETED) return -1;
+                    if (fs->layer1.count >= 128) return -1;
+                    fs->layer1.nodes[fs->layer1.count] = *node;
+                    fs->layer1.nodes[fs->layer1.count].owner_profile_id = profile_id;
+                    fs->layer1.count++;
+                    fs->profiles[i].layer2.nodes[j] = fs->profiles[i].layer2.nodes[fs->profiles[i].layer2.count - 1];
+                    fs->profiles[i].layer2.count--;
 
+                    return 0;
+                }
+            }
+        }
+    }
+
+    return -1;
 }

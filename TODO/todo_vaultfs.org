@@ -47,7 +47,7 @@
 - Retourner 0 (succès)
 - NOTE : ordre critique — allouer avant de libérer pour éviter dangling pointer
 
-* TODO vaultfs_delete
+* YES vaultfs_delete
 - Chercher node dans C2 du profil via path
 - Si trouvé dans C2 :
   - Si node->data != NULL -> pmm_free_page((uint64_t)node->data)
