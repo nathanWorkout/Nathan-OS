@@ -37,5 +37,7 @@ void vaultfs_init(VaultFs *fs);
 VaultNode *vaultfs_resolve(VaultFs *fs, uint64_t profile_id, const char *path);
 VaultNode *vaultfs_create(VaultFs *fs, uint64_t profile_id, const char *name, VaultNodeType type);
 int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *data, uint64_t size);
+int vaultfs_delete(VaultFs *fs, uint64_t profile_id, const char *path);
+int vaultfs_publish(VaultFs *fs, uint64_t profile_id, const char *path);
 
 #endif
