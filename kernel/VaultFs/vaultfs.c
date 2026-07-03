@@ -55,7 +55,28 @@ VaultNode *vaultfs_create(VaultFs *fs, uint64_t profile_id, const char *name, Va
     return NULL;
 }
 
-int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *data, uint64_t size) {
+VaultNode *vaultfs_create(VaultFs *fs, uint64_t profile_id, const char *name, VaultNodeType type) {
+
+  for(uint8_t i = 0; i < fs->profile_count; i++) {
+        if (fs->profiles[i].profile_id == profile_id) {
+            if (fs->profiles[i].layer2.count >= 128) return NULL;
+
+            VaultNode *node = &fs->profiles[i].layer2.nodes[fs->profiles[i].layer2.count];
+
+            memcpy(node->name, name, 127);
+            node->name[127] = '\0';
+            node->type = type;
+            node->data = NULL;
+            node->size = 0;
+            node->owner_profile_id = 0;
+            fs->profiles[i].layer2.count++;
+            return node;
+        }
+    }
+    return NULL;
+}
+
+int vaultfs_mkdir(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *data, uint64_t size) {
     // Retourne 0 si succès, -1 si erreur
     VaultNode *node = vaultfs_resolve(fs, profile_id, path);
     int in_c0 = 0;
@@ -64,12 +85,11 @@ int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *d
         in_c0 = (node >= &fs->layer0.nodes[0] && node < &fs->layer0.nodes[128]);
         in_c1 = (node >= &fs->layer1.nodes[0] && node < &fs->layer1.nodes[128]);
     }
-    if (node != NULL && node->type == VAULT_DIR) return -1;
     if (in_c0) return -1;
 
     int was_in_c2 = 0;
     if (node == NULL) {
-        node = vaultfs_create(fs, profile_id, path, VAULT_FILE);
+        node = vaultfs_create(fs, profile_id, path, VAULT_DIR);
         if (node == NULL) return -1;
     } else if (in_c1) {
         node = vaultfs_create(fs, profile_id, path, node->type); // copy on write        if (node == NULL) return -1;
