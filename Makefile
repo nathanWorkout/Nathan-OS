@@ -28,7 +28,8 @@ CFLAGS = \
     -I kernel/shell       \
     -I kernel/lib         \
     -I kernel/proc        \
-    -I kernel/Graphic
+    -I kernel/Graphic     \
+    -I kernel/VaultFs/
 
 ASFLAGS = -f elf64
 
@@ -50,7 +51,8 @@ C_SRCS = \
     $(wildcard $(KERNEL)/drivers/keyboard/*.c)  \
     $(wildcard $(KERNEL)/shell/*.c)             \
     $(wildcard $(KERNEL)/proc/*.c)              \
-    $(wildcard $(KERNEL)/Graphic/*.c)
+    $(wildcard $(KERNEL)/Graphic/*.c)           \
+	$(wildcard $(KERNEL)/VaultFs/*.c)
 
 ASM_SRCS = \
     $(filter-out $(KERNEL)/entry.asm, $(wildcard $(KERNEL)/*.asm)) \
@@ -94,6 +96,8 @@ $(BUILD)/%.o: $(KERNEL)/shell/%.c
 $(BUILD)/%.o: $(KERNEL)/proc/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/%.o: $(KERNEL)/Graphic/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD)/%.o: $(KERNEL)/VaultFs/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/%.o: $(KERNEL)/%.asm

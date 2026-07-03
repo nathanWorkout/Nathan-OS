@@ -9,7 +9,7 @@ void update_cursor(int x, int y);
 uint16_t get_cursor_position(void);
 void tty_init(Canvas c);
 void putchar(char c);
-void puts(char *s);
+void puts(const char *s);
 int printk(const char *fmt, ...);
 void tty_set_color(uint32_t c);
 void tty_clear();

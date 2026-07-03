@@ -7,6 +7,9 @@
 #include "kernel_panic.h"
 #include "framebuffer.h"
 #include "2d_renderer.h"
+#include "VaultFs/vaultfs.h"
+#include "memory/paging.h"
+#include "memory/pmm.h"
 #include <stddef.h>
 
 
@@ -22,8 +25,10 @@
 #define COL_SAY      rgba(255, 214,  10, 255)
 #define COL_ERROR    rgba(255,  69,  58, 255)
 
+static VaultFs vaultfs;
+static uint64_t current_profile_id = 1;
 
-
+extern address_space_t kernel_space_static;
 extern volatile uint64_t pit_ticks;
 static ring_buffer_t rb;
 
@@ -119,6 +124,9 @@ void print_motd() {
 }
 
 void shell_run(Canvas *cv) {
+    vaultfs_init(&vaultfs);
+    vaultfs_create_profile(&vaultfs, 1, "default");
+
     char buf[256];
 
     print_motd();
@@ -135,7 +143,7 @@ void shell_run(Canvas *cv) {
 
         if (strcmp(buf, "help") == 0) {
             tty_set_color(COL_OUTPUT);
-            puts("clear say reboot kernelpanic");
+            puts("clear | say | reboot | kernelpanic | ls | cat | write | rm | mkdir | publish | profile | list profile | create profile | switch profile");
             tty_set_color(COL_INPUT);
         }
         else if (strcmp(buf, "clear") == 0)
@@ -147,12 +155,198 @@ void shell_run(Canvas *cv) {
             puts(buf + 4);
             tty_set_color(COL_INPUT);
         }
-        else if (strcmp(buf, "kernelpanic") == 0)
-            kernel_panic_init(cv, NULL);
+        else if (strcmp(buf, "kernelpanic") == 0) kernel_panic_init(cv, NULL);
+
+        // VaultFs
+        else if(strcmp(buf, "ls") == 0) {
+            tty_set_color(COL_OUTPUT);
+            VaultProfile *p = NULL;
+            for(uint8_t i = 0; i < vaultfs.profile_count; i++) {
+                if(vaultfs.profiles[i].profile_id == current_profile_id) {
+                    p = &vaultfs.profiles[i];
+                    break;
+                }
+            }
+
+            if(p == NULL) {
+                tty_set_color(COL_ERROR);
+                puts("no active profile");
+            } else {
+                for (uint8_t i = 0; i < p->layer2.count; i++) {
+                    if(p->layer2.nodes[i].type != VAULT_DELETED) {
+                        puts(p->layer2.nodes[i].name);
+                    }
+                }
+
+                for(uint8_t i = 0; i < vaultfs.layer1.count; i++) {
+                    int masked = 0;
+
+                    for (uint8_t j = 0; j < p->layer2.count; j++) {
+                        if(strcmp(p->layer2.nodes[j].name, vaultfs.layer1.nodes[i].name) == 0) {
+                            masked = 1;
+                            break;
+                        }
+                    }
+
+                    if(!masked) {
+                        puts(vaultfs.layer1.nodes[i].name);
+                    }
+                }
+
+                for(uint8_t i = 0; i < vaultfs.layer0.count; i++) {
+                    int masked = 0;
+
+                    for(uint8_t j = 0; j < p->layer2.count; j++) {
+                        if(strcmp(p->layer2.nodes[j].name, vaultfs.layer0.nodes[i].name) == 0) {
+                            masked = 1;
+                            break;
+                        }
+                    }
+
+                    if(!masked) {
+                        for (uint8_t j = 0; j < vaultfs.layer1.count; j++) {
+                            if (strcmp(vaultfs.layer1.nodes[j].name, vaultfs.layer0.nodes[i].name) == 0) {
+                                masked = 1;
+                                break;
+                            }
+                        }
+                    }
+
+                    if(!masked) {
+                        puts(vaultfs.layer0.nodes[i].name);
+                    }
+                }
+            }
+            tty_set_color(COL_INPUT);
+        }
+
+        else if(strncmp(buf, "write ", 6) == 0) {
+            char *args = buf + 6;
+            char *space = args;
+            while(*space && *space != ' ') space++;
+            if(*space == '\0') {
+                tty_set_color(COL_ERROR);
+                puts("usage: write <nom> <contenu>");
+            } else {
+                *space = '\0';
+                char *name = args;
+                char *content = space + 1;
+                int ret = vaultfs_write(&vaultfs, current_profile_id, name, (uint8_t *)content, strlen(content) + 1);
+                if (ret == 0) {
+                    tty_set_color(COL_OUTPUT);
+                } else {
+                    tty_set_color(COL_ERROR);
+                    puts("erreur");
+                }
+            }
+            tty_set_color(COL_INPUT);
+        }
+
+        else if (strncmp(buf, "cat ", 4) == 0) {
+            char *path = buf + 4;
+            uint64_t size = 0;
+
+            uint8_t *phys_data = vaultfs_read(&vaultfs, current_profile_id, path, &size);
+
+            if(phys_data == NULL) {
+                tty_set_color(COL_ERROR);
+                puts("fichier introuvable");
+            } else {
+                tty_set_color(COL_OUTPUT);
+
+                uint64_t virt_addr = phys_to_virt((uint64_t)phys_data);
+                vmm_map(&kernel_space_static, virt_addr, (uint64_t)phys_data, PAGE_PRESENT | PAGE_RW | PAGE_NX);
+                uint8_t *virt_data = (uint8_t *)virt_addr;
+
+                for(uint64_t i = 0; i < size; i++) {
+                    if(virt_data[i] != '\0') {
+                        putchar(virt_data[i]);
+                    }
+                }
+                putchar('\n');
+            }
+            tty_set_color(COL_INPUT);
+        }
+
+        else if(strncmp(buf, "rm ", 3) == 0) {
+            char *path = buf + 3;
+            int ret = vaultfs_delete(&vaultfs, current_profile_id, path);
+            if(ret == 0) {
+                tty_set_color(COL_OUTPUT);
+            } else {
+                tty_set_color(COL_ERROR);
+                puts("erreur");
+            }
+            tty_set_color(COL_INPUT);
+        }
+
+        else if(strncmp(buf, "mkdir ", 6) == 0) {
+            char *path = buf + 6;
+            int ret = vaultfs_mkdir(&vaultfs, current_profile_id, path);
+            if(ret == 0) {
+                tty_set_color(COL_OUTPUT);
+            } else {
+                tty_set_color(COL_ERROR);
+                puts("erreur ou dossier existant");
+            }
+            tty_set_color(COL_INPUT);
+        }
+
+        else if(strncmp(buf, "publish ", 8) == 0) {
+            char *path = buf + 8;
+            int ret = vaultfs_publish(&vaultfs, current_profile_id, path);
+            if(ret == 0) {
+                tty_set_color(COL_OUTPUT);
+            } else {
+                tty_set_color(COL_ERROR);
+                puts("erreur");
+            }
+            tty_set_color(COL_INPUT);
+        }
+
+        else if(strcmp(buf, "list profile") == 0) {
+            tty_set_color(COL_OUTPUT);
+            for(uint8_t i = 0; i < vaultfs.profile_count; i++) {
+                 if(vaultfs.profiles[i].profile_id == current_profile_id)
+                    printk("> %s\n", vaultfs.profiles[i].name);
+                 else printk("  %s\n", vaultfs.profiles[i].name);
+            }
+            tty_set_color(COL_INPUT);
+        }
+
+        else if (strncmp(buf, "create profile ", 15) == 0) {
+            char *name = buf + 15;
+            static uint64_t next_id = 2;
+            int ret = vaultfs_create_profile(&vaultfs, next_id++, name);
+            if (ret == 0) {
+                tty_set_color(COL_OUTPUT);
+
+            } else {
+                tty_set_color(COL_ERROR);
+                puts("erreur ou limite atteinte");
+            }
+            tty_set_color(COL_INPUT);
+        }
+
+        else if(strncmp(buf, "switch profile ", 15) == 0) {
+            char *name = buf + 15;
+            VaultProfile *p = vaultfs_find_profile_by_name(&vaultfs, name);
+            if(p == NULL) {
+                tty_set_color(COL_ERROR);
+                puts("profil introuvable");
+            } else {
+                current_profile_id = p->profile_id;
+                tty_set_color(COL_OUTPUT);
+                printk("profil actif : %s\n", p->name);
+            }
+            tty_set_color(COL_INPUT);
+        }
+
         else if (strcmp(buf, "") != 0) {
             tty_set_color(COL_ERROR);
             printk("unknown command : %s\n", buf);
             tty_set_color(COL_INPUT);
         }
+
     }
 }

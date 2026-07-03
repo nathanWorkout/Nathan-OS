@@ -92,7 +92,7 @@
         - Supprimer node de C1 (écraser avec dernier, décrémenter fs->layer1.count)
         - retourne succès
 - retourne erreur
-* TODO vaultfs_destroy_profile
+* YES vaultfs_destroy_profile
 - Trouver le profil via profile_id
 - Si non trouvé -> retourner erreur
 - Pour chaque node de 0 à (count - 1) dans layer2 :

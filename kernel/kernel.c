@@ -44,7 +44,7 @@ void kmain(void) {
     }
 
     pmm_init_full(memmap_request.response, kernel_space);
-    vmm_apply_nx(kernel_space);
+    //vmm_apply_nx(kernel_space);
     vmm_switch_space(kernel_space);
     pmm_switch_to_full();
 

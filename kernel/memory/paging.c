@@ -115,7 +115,7 @@ void vmm_switch_space(address_space_t *space) {
     asm volatile("mov %0, %%cr3" :: "r"(space->pml4_phys) : "memory");
 }
 
-static address_space_t kernel_space_static;
+address_space_t kernel_space_static;
 
 address_space_t *vmm_create_kernel_space(void) {
     uint64_t pml4_phys = pmm_alloc_page();
