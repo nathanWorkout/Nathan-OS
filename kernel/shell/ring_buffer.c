@@ -27,8 +27,8 @@
 
 static VaultFs vaultfs;
 static uint64_t current_profile_id = 1;
+static char current_path[256] = "/";
 
-extern address_space_t kernel_space_static;
 extern volatile uint64_t pit_ticks;
 static ring_buffer_t rb;
 
@@ -236,34 +236,46 @@ void shell_run(Canvas *cv) {
                     tty_set_color(COL_OUTPUT);
                 } else {
                     tty_set_color(COL_ERROR);
-                    puts("erreur");
+                    puts("error");
                 }
             }
             tty_set_color(COL_INPUT);
         }
 
-        else if (strncmp(buf, "cat ", 4) == 0) {
+        else if(strncmp(buf, "cat ", 4) == 0) {
             char *path = buf + 4;
             uint64_t size = 0;
 
-            uint8_t *phys_data = vaultfs_read(&vaultfs, current_profile_id, path, &size);
+            uint8_t *data = vaultfs_read(&vaultfs, current_profile_id, path, &size);
 
-            if(phys_data == NULL) {
+            if(data == NULL) {
                 tty_set_color(COL_ERROR);
-                puts("fichier introuvable");
+                puts("file not found");
             } else {
                 tty_set_color(COL_OUTPUT);
-
-                uint64_t virt_addr = phys_to_virt((uint64_t)phys_data);
-                vmm_map(&kernel_space_static, virt_addr, (uint64_t)phys_data, PAGE_PRESENT | PAGE_RW | PAGE_NX);
-                uint8_t *virt_data = (uint8_t *)virt_addr;
-
                 for(uint64_t i = 0; i < size; i++) {
-                    if(virt_data[i] != '\0') {
-                        putchar(virt_data[i]);
-                    }
+                    if(data[i] != '\0') putchar(data[i]);
                 }
                 putchar('\n');
+            }
+            tty_set_color(COL_INPUT);
+        }
+
+        else if(strncmp(buf, "cd ", 3) == 0) {
+            char *path = buf + 3;
+
+            if(strcmp(path, "/") == 0) {
+                current_path[0] = '/';
+                current_path[1] = '\0';
+            } else {
+                VaultNode *node = vaultfs_resolve(&vaultfs, current_profile_id, path);
+                if(node == NULL || node->type != VAULT_DIR) {
+                    tty_set_color(COL_ERROR);
+                    puts("dossier introuvable");
+                } else {
+                    memcpy(current_path, path, 255);
+                    current_path[255] = '\0';
+                }
             }
             tty_set_color(COL_INPUT);
         }
@@ -275,7 +287,7 @@ void shell_run(Canvas *cv) {
                 tty_set_color(COL_OUTPUT);
             } else {
                 tty_set_color(COL_ERROR);
-                puts("erreur");
+                puts("error");
             }
             tty_set_color(COL_INPUT);
         }
@@ -287,7 +299,7 @@ void shell_run(Canvas *cv) {
                 tty_set_color(COL_OUTPUT);
             } else {
                 tty_set_color(COL_ERROR);
-                puts("erreur ou dossier existant");
+                puts("error or existing folder");
             }
             tty_set_color(COL_INPUT);
         }

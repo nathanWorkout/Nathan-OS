@@ -37,7 +37,7 @@ uint8_t *vaultfs_read(VaultFs *fs, uint64_t profile_id, const char *path, uint64
     if (node == NULL) return NULL;
     if (node->data == NULL) return NULL;
     *size_out = node->size;
-    return node->data;
+    return (uint8_t *)phys_to_virt((uint64_t)node->data);
 }
 
 

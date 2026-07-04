@@ -44,18 +44,20 @@ void kmain(void) {
     }
 
     pmm_init_full(memmap_request.response, kernel_space);
-    //vmm_apply_nx(kernel_space);
+    serial_print("[DEBUG] avant vmm_apply_nx\n");
+    vmm_apply_nx(kernel_space);
+    serial_print("[DEBUG] apres vmm_apply_nx\n");
+    serial_print("avant switch\n");
     vmm_switch_space(kernel_space);
-    pmm_switch_to_full();
-
-    enable_wp();
-    pic_init();
-    pit_init(1000);
-    tss_init();
-
-    vmm_set_readonly(kernel_space, (uint64_t)idt, sizeof(idt));
-    vmm_set_readonly(kernel_space, (uint64_t)gdt, sizeof(gdt_entry_t) * GDT_ENTRY_COUNT);
-    vmm_set_readonly(kernel_space, tss_get_addr(), tss_get_size());
+    serial_print("apres switch\n");
+    pmm_switch_to_full();            serial_print("1\n");
+    enable_wp();                     serial_print("2\n");
+    pic_init();                      serial_print("3\n");
+    pit_init(1000);                  serial_print("4\n");
+    tss_init();                      serial_print("5\n");
+    vmm_set_readonly(kernel_space, (uint64_t)idt, sizeof(idt));   serial_print("6\n");
+    vmm_set_readonly(kernel_space, (uint64_t)gdt, sizeof(gdt_entry_t) * GDT_ENTRY_COUNT); serial_print("7\n");
+    vmm_set_readonly(kernel_space, tss_get_addr(), tss_get_size()); serial_print("8\n");
 
     #if 0
     serial_print("[TEST] Tentative d'ecriture sur IDT (doit fault)...\n");
@@ -64,16 +66,25 @@ void kmain(void) {
     serial_print("[TEST] ERREUR: l'ecriture a reussi, RO ne fonctionne pas !\n");
     #endif
 
+    serial_print("a\n");
     Canvas screen = fb_get_canvas();
+    serial_print("b\n");
     gfx_init(&screen);
+    serial_print("c\n");
     tty_init(screen);
+    serial_print("d\n");
 
     __asm__ volatile ("sti");
+    serial_print("e\n");
     pic_clear_mask(0);
+    serial_print("f\n");
     pic_clear_mask(1);
+    serial_print("g\n");
 
     Canvas cv = fb_get_canvas();
+    serial_print("h\n");
     shell_run(&cv);
+    serial_print("i\n");
 
     while (1) {
         __asm__("hlt");

@@ -9,6 +9,7 @@
 extern char _text_start,   _text_end;
 extern char _rodata_start, _rodata_end;
 extern char _data_start,   _data_end;
+extern char _bss_start, _bss_end;
 
 static inline uint64_t kernel_virt_to_phys(uint64_t virt) {
     if (kernel_address_request.response == NULL) return virt;
@@ -141,10 +142,10 @@ address_space_t *vmm_create_kernel_space(void) {
 
 // Premières fonctions de ma forteresse
 void enable_nxe(void) {
-    uint64_t efer;
-    asm volatile("rdmsr" : "=A"(efer) : "c"(0xC0000080));
-    efer |= (1ULL << 11);  // bit 11 = NXE
-    asm volatile("wrmsr" :: "A"(efer), "c"(0xC0000080));
+    uint32_t lo, hi;
+    asm volatile("rdmsr" : "=a"(lo), "=d"(hi) : "c"(0xC0000080));
+    lo |= (1 << 11); // bit NXE
+    asm volatile("wrmsr" :: "a"(lo), "d"(hi), "c"(0xC0000080));
 }
 
 void enable_wp(void) {
@@ -155,13 +156,25 @@ void enable_wp(void) {
 }
 
 void vmm_apply_nx(address_space_t *space) {
+    // Passe 1 : remapper tout le kernel en RW d'abord
+    for (uint64_t a = (uint64_t)&_text_start; a < (uint64_t)&_bss_end; a += PAGE_SIZE)
+        vmm_map(space, a, kernel_virt_to_phys(a), PAGE_PRESENT | PAGE_RW);
+
+    // Passe 2 : appliquer les permissions spécifiques
+    // .text : exécutable, pas d'écriture, pas de NX
     for (uint64_t a = (uint64_t)&_text_start; a < (uint64_t)&_text_end; a += PAGE_SIZE)
         vmm_map(space, a, kernel_virt_to_phys(a), PAGE_PRESENT);
 
+    // .rodata : lecture seule, NX
     for (uint64_t a = (uint64_t)&_rodata_start; a < (uint64_t)&_rodata_end; a += PAGE_SIZE)
         vmm_map(space, a, kernel_virt_to_phys(a), PAGE_PRESENT | PAGE_NX);
 
-    for (uint64_t a = (uint64_t)&_data_start; a < (uint64_t)&_data_end; a += PAGE_SIZE)
+    // .data : lecture/écriture, NX (utilise _bss_start comme fin réelle)
+    for (uint64_t a = (uint64_t)&_data_start; a < (uint64_t)&_bss_start; a += PAGE_SIZE)
+        vmm_map(space, a, kernel_virt_to_phys(a), PAGE_PRESENT | PAGE_RW | PAGE_NX);
+
+    // .bss : lecture/écriture, NX
+    for (uint64_t a = (uint64_t)&_bss_start; a < (uint64_t)&_bss_end; a += PAGE_SIZE)
         vmm_map(space, a, kernel_virt_to_phys(a), PAGE_PRESENT | PAGE_RW | PAGE_NX);
 }
 

@@ -49,3 +49,12 @@ void *memcpy(void *dst, const void *src, size_t n) {
 
     return dst;
 }
+
+void strcat(char *dest, const char *src) {
+    int i = strlen(dest);
+    int j = 0;
+    while (src[j] != '\0') {
+        dest[i++] = src[j++];
+    }
+    dest[i] = '\0';
+}
