@@ -39,7 +39,7 @@ void kmain(void) {
 
     address_space_t *kernel_space = vmm_create_kernel_space();
     if (!kernel_space) {
-        serial_print("[KERNEL] FATAL: Failed to create kernel space\n");
+        serial_print("[KERNEL] Failed to create kernel space\n");
         for (;;);
     }
 
@@ -48,16 +48,27 @@ void kmain(void) {
     vmm_apply_nx(kernel_space);
     serial_print("[DEBUG] apres vmm_apply_nx\n");
     serial_print("avant switch\n");
+    Canvas screen = fb_get_canvas();
+    vmm_map_framebuffer(kernel_space, &screen);
+    serial_print("apres map framebuffer\n");
     vmm_switch_space(kernel_space);
     serial_print("apres switch\n");
-    pmm_switch_to_full();            serial_print("1\n");
-    enable_wp();                     serial_print("2\n");
-    pic_init();                      serial_print("3\n");
-    pit_init(1000);                  serial_print("4\n");
-    tss_init();                      serial_print("5\n");
-    vmm_set_readonly(kernel_space, (uint64_t)idt, sizeof(idt));   serial_print("6\n");
-    vmm_set_readonly(kernel_space, (uint64_t)gdt, sizeof(gdt_entry_t) * GDT_ENTRY_COUNT); serial_print("7\n");
-    vmm_set_readonly(kernel_space, tss_get_addr(), tss_get_size()); serial_print("8\n");
+    pmm_switch_to_full();
+    serial_print("1\n");
+    enable_wp();
+    serial_print("2\n");
+    pic_init();
+    serial_print("3\n");
+    pit_init(1000);
+    serial_print("4\n");
+    tss_init();
+    serial_print("5\n");
+    //vmm_set_readonly(kernel_space, (uint64_t)idt, sizeof(idt));
+    serial_print("6\n");
+    vmm_set_readonly(kernel_space, (uint64_t)gdt, sizeof(gdt_entry_t) * GDT_ENTRY_COUNT);
+    serial_print("7\n");
+    vmm_set_readonly(kernel_space, tss_get_addr(), tss_get_size());
+    serial_print("8\n");
 
     #if 0
     serial_print("[TEST] Tentative d'ecriture sur IDT (doit fault)...\n");
@@ -67,11 +78,10 @@ void kmain(void) {
     #endif
 
     serial_print("a\n");
-    Canvas screen = fb_get_canvas();
-    serial_print("b\n");
     gfx_init(&screen);
-    serial_print("c\n");
+    serial_print("b\n");
     tty_init(screen);
+    serial_print("c\n");
     serial_print("d\n");
 
     __asm__ volatile ("sti");

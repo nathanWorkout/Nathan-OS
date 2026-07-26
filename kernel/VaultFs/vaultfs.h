@@ -34,16 +34,16 @@ typedef struct {
     uint8_t profile_count;
 } VaultFs;
 
-void vaultfs_init(VaultFs *fs);
+void vaultfs_init         (VaultFs *fs);
 VaultNode *vaultfs_resolve(VaultFs *fs, uint64_t profile_id, const char *path);
-uint8_t *vaultfs_read(VaultFs *fs, uint64_t profile_id, const char *path, uint64_t *size_out);
-VaultNode *vaultfs_create(VaultFs *fs, uint64_t profile_id, const char *name, VaultNodeType type);
-int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *data, uint64_t size);
-int vaultfs_mkdir(VaultFs *fs, uint64_t profile_id, const char *path);
-int vaultfs_delete(VaultFs *fs, uint64_t profile_id, const char *path);
-int vaultfs_publish(VaultFs *fs, uint64_t profile_id, const char *path);
-int vaultfs_depublish(VaultFs *fs, uint64_t profile_id, const char *path);
-int vault_destroy_profile(VaultFs *fs, uint64_t profile_id);
+uint8_t *vaultfs_read     (VaultFs *fs, uint64_t profile_id, const char *path, uint64_t *size_out);
+VaultNode *vaultfs_create (VaultFs *fs, uint64_t profile_id, const char *name, VaultNodeType type);
+int vaultfs_write         (VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *data, uint64_t size);
+int vaultfs_mkdir         (VaultFs *fs, uint64_t profile_id, const char *path);
+int vaultfs_delete        (VaultFs *fs, uint64_t profile_id, const char *path);
+int vaultfs_publish       (VaultFs *fs, uint64_t profile_id, const char *path);
+int vaultfs_depublish     (VaultFs *fs, uint64_t profile_id, const char *path);
+int vault_destroy_profile (VaultFs *fs, uint64_t profile_id);
 int vaultfs_create_profile(VaultFs *fs, uint64_t profile_id, const char *name);
 VaultProfile *vaultfs_find_profile_by_name(VaultFs *fs, const char *name);
 

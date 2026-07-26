@@ -114,16 +114,17 @@ img: $(BUILD)/kernel.elf
 	mformat -i $(IMG)@@1M -F -v VAULTOS ::
 	mmd -i $(IMG)@@1M ::/boot
 	mcopy -i $(IMG)@@1M $(BUILD)/kernel.elf ::/boot/kernel.elf
-	mcopy -i $(IMG)@@1M limine.conf ::/boot/limine.cfg
+	mcopy -i $(IMG)@@1M limine.conf ::/boot/limine.conf
 	mcopy -i $(IMG)@@1M $(LIMINE)/limine-bios.sys ::/limine-bios.sys
 	limine bios-install $(IMG)
+	limine enroll-config $(IMG) $(shell b2sum limine.conf | awk '{print $$1}' | tr -d '\n')
 
 run: $(IMG)
 	qemu-system-x86_64 \
 	    -drive format=raw,file=$(IMG),index=0,media=disk \
 	    -serial stdio \
 	    -m 128M \
-	    -display sdl
+	    -display sdl 
 
 debug: $(IMG)
 	qemu-system-x86_64 \
