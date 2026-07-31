@@ -135,7 +135,9 @@ void shell_run(Canvas *cv) {
         tty_set_color(COL_PROMPT);
         printk("vault-os");
         tty_set_color(COL_PROMPT2);
-        printk(" ~ ");
+        char cwd_display[256];
+        vaultfs_get_cwd_path(&vaultfs, current_profile_id, cwd_display, 256);
+        printk(" %s ", cwd_display);
         tty_set_color(COL_PROMPT);
         printk("%% ");
         tty_set_color(COL_INPUT);
@@ -160,6 +162,7 @@ void shell_run(Canvas *cv) {
         // VaultFs
         else if(strcmp(buf, "ls") == 0) {
             tty_set_color(COL_OUTPUT);
+
             VaultProfile *p = NULL;
             for(uint8_t i = 0; i < vaultfs.profile_count; i++) {
                 if(vaultfs.profiles[i].profile_id == current_profile_id) {
@@ -172,49 +175,48 @@ void shell_run(Canvas *cv) {
                 tty_set_color(COL_ERROR);
                 puts("no active profile");
             } else {
-                for (uint8_t i = 0; i < p->layer2.count; i++) {
-                    if(p->layer2.nodes[i].type != VAULT_DELETED) {
-                        puts(p->layer2.nodes[i].name);
-                    }
+                uint64_t cwd = p->cwd_inode;
+
+                VaultNode *n = p->layer2.head;
+                while(n) {
+                    if(n->parent_inode == cwd && n->type != VAULT_DELETED)
+                        puts(n->name);
+                    n = n->next;
                 }
 
-                for(uint8_t i = 0; i < vaultfs.layer1.count; i++) {
-                    int masked = 0;
-
-                    for (uint8_t j = 0; j < p->layer2.count; j++) {
-                        if(strcmp(p->layer2.nodes[j].name, vaultfs.layer1.nodes[i].name) == 0) {
-                            masked = 1;
-                            break;
+                n = vaultfs.layer1.head;
+                while(n) {
+                    if(n->parent_inode == cwd) {
+                        int masked = 0;
+                        VaultNode *m = p->layer2.head;
+                        while(m) {
+                            if(strcmp(m->name, n->name) == 0) { masked = 1; break; }
+                            m = m->next;
                         }
+                        if(!masked) puts(n->name);
                     }
-
-                    if(!masked) {
-                        puts(vaultfs.layer1.nodes[i].name);
-                    }
+                    n = n->next;
                 }
 
-                for(uint8_t i = 0; i < vaultfs.layer0.count; i++) {
-                    int masked = 0;
-
-                    for(uint8_t j = 0; j < p->layer2.count; j++) {
-                        if(strcmp(p->layer2.nodes[j].name, vaultfs.layer0.nodes[i].name) == 0) {
-                            masked = 1;
-                            break;
+                n = vaultfs.layer0.head;
+                while(n) {
+                    if(n->parent_inode == cwd) {
+                        int masked = 0;
+                        VaultNode *m = p->layer2.head;
+                        while(m) {
+                            if(strcmp(m->name, n->name) == 0) { masked = 1; break; }
+                            m = m->next;
                         }
-                    }
-
-                    if(!masked) {
-                        for (uint8_t j = 0; j < vaultfs.layer1.count; j++) {
-                            if (strcmp(vaultfs.layer1.nodes[j].name, vaultfs.layer0.nodes[i].name) == 0) {
-                                masked = 1;
-                                break;
+                        if(!masked) {
+                            m = vaultfs.layer1.head;
+                            while(m) {
+                                if(strcmp(m->name, n->name) == 0) { masked = 1; break; }
+                                m = m->next;
                             }
                         }
+                        if(!masked) puts(n->name);
                     }
-
-                    if(!masked) {
-                        puts(vaultfs.layer0.nodes[i].name);
-                    }
+                    n = n->next;
                 }
             }
             tty_set_color(COL_INPUT);
@@ -263,19 +265,13 @@ void shell_run(Canvas *cv) {
 
         else if(strncmp(buf, "cd ", 3) == 0) {
             char *path = buf + 3;
-
-            if(strcmp(path, "/") == 0) {
-                current_path[0] = '/';
-                current_path[1] = '\0';
+            int ret = vaultfs_cd(&vaultfs, current_profile_id, path);
+            if(ret != 0) {
+                tty_set_color(COL_ERROR);
+                puts("dossier introuvable");
             } else {
-                VaultNode *node = vaultfs_resolve(&vaultfs, current_profile_id, path);
-                if(node == NULL || node->type != VAULT_DIR) {
-                    tty_set_color(COL_ERROR);
-                    puts("dossier introuvable");
-                } else {
-                    memcpy(current_path, path, 255);
-                    current_path[255] = '\0';
-                }
+                memcpy(current_path, path, 255);
+                current_path[255] = '\0';
             }
             tty_set_color(COL_INPUT);
         }

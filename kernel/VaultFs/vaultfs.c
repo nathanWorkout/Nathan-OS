@@ -3,29 +3,53 @@
 #include "vaultfs.h"
 #include "string.h"
 
-void vaultfs_init(VaultFs *fs) { memset(fs, 0, sizeof(VaultFs)); }
+void vaultfs_init(VaultFs *fs) {
+    memset(fs, 0, sizeof(VaultFs));
+    fs->next_inode = 1;
+
+    uint64_t phys = pmm_alloc_page();
+    VaultNode *root = (VaultNode *)phys_to_virt(phys);
+    memset(root, 0, sizeof(VaultNode));
+
+    root->inode_id     = 0;
+    root->parent_inode = 0;
+    root->type         = VAULT_DIR;
+    root->name[0]      = '/';
+    root->name[1]      = '\0';
+    root->next         = NULL;
+
+    fs->layer0.head  = root;
+    fs->layer0.count = 1;
+}
 
 VaultNode *vaultfs_resolve(VaultFs *fs, uint64_t profile_id, const char *path) {
-    for(uint8_t i = 0; i < fs->profile_count; i++) {
-        if(fs->profiles[i].profile_id == profile_id) {
-            for(uint8_t j = 0; j < fs->profiles[i].layer2.count; j++) {
-                if (strcmp(fs->profiles[i].layer2.nodes[j].name, path) == 0) {
-                    if (fs->profiles[i].layer2.nodes[j].type == VAULT_DELETED) return NULL;
-                    return &fs->profiles[i].layer2.nodes[j];
-                }
+    int deleted = 0;
+
+    for (uint8_t i = 0; i < fs->profile_count; i++) {
+        if (fs->profiles[i].profile_id != profile_id) continue;
+        VaultNode *n = fs->profiles[i].layer2.head;
+        while (n) {
+            if (strcmp(n->name, path) == 0) {
+                if (n->type == VAULT_DELETED) { deleted = 1; break; }
+                return n;
             }
+            n = n->next;
         }
     }
 
-    for(uint8_t j = 0; j < fs->layer1.count; j++) {
-        if(strcmp(fs->layer1.nodes[j].name, path) == 0) {
-          return &fs->layer1.nodes[j];
+    if (!deleted) {
+        VaultNode *n = fs->layer1.head;
+        while (n) {
+            if (strcmp(n->name, path) == 0) return n;
+            n = n->next;
         }
     }
 
-    for(uint8_t j = 0; j < fs->layer0.count; j++) {
-        if(strcmp(fs->layer0.nodes[j].name, path) == 0) {
-            return &fs->layer0.nodes[j];
+    if (!deleted) {
+        VaultNode *n = fs->layer0.head;
+        while (n) {
+            if (strcmp(n->name, path) == 0) return n;
+            n = n->next;
         }
     }
 
@@ -37,27 +61,32 @@ uint8_t *vaultfs_read(VaultFs *fs, uint64_t profile_id, const char *path, uint64
     if (node == NULL) return NULL;
     if (node->data == NULL) return NULL;
     *size_out = node->size;
-    return (uint8_t *)phys_to_virt((uint64_t)node->data);
+    return node->data; 
 }
 
+VaultNode *vaultfs_create(VaultFs *fs, uint64_t profile_id, const char *name, uint64_t parent_inode, VaultNodeType type) {
+    for (uint8_t i = 0; i < fs->profile_count; i++) {
+        if (fs->profiles[i].profile_id != profile_id) continue;
 
-VaultNode *vaultfs_create(VaultFs *fs, uint64_t profile_id, const char *name, VaultNodeType type) {
+        uint64_t phys = pmm_alloc_page();
+        if (phys == 0) return NULL;
+        VaultNode *node = (VaultNode *)phys_to_virt(phys);
 
-  for(uint8_t i = 0; i < fs->profile_count; i++) {
-        if (fs->profiles[i].profile_id == profile_id) {
-            if (fs->profiles[i].layer2.count >= 128) return NULL;
+        memset(node, 0, sizeof(VaultNode));
+        node->inode_id         = fs->next_inode++;
+        node->parent_inode     = parent_inode;
+        node->type             = type;
+        node->data             = NULL;
+        node->size             = 0;
+        node->owner_profile_id = profile_id;
+        memcpy(node->name, name, 127);
+        node->name[127]        = '\0';
 
-            VaultNode *node = &fs->profiles[i].layer2.nodes[fs->profiles[i].layer2.count];
+        node->next                  = fs->profiles[i].layer2.head;
+        fs->profiles[i].layer2.head = node;
+        fs->profiles[i].layer2.count++;
 
-            memcpy(node->name, name, 127);
-            node->name[127] = '\0';
-            node->type = type;
-            node->data = NULL;
-            node->size = 0;
-            node->owner_profile_id = 0;
-            fs->profiles[i].layer2.count++;
-            return node;
-        }
+        return node;
     }
     return NULL;
 }
@@ -67,17 +96,40 @@ int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *d
 
     int in_c0 = 0, in_c1 = 0;
     if (target_node != NULL) {
-        in_c0 = (target_node >= &fs->layer0.nodes[0] && target_node < &fs->layer0.nodes[128]);
-        in_c1 = (target_node >= &fs->layer1.nodes[0] && target_node < &fs->layer1.nodes[128]);
+        VaultNode *n = fs->layer0.head;
+        while (n) {
+            if (n == target_node) { 
+                in_c0 = 1; 
+                break; 
+            }
+            n = n->next;
+        }
+        n = fs->layer1.head;
+        while (n) {
+            if (n == target_node) { 
+                in_c1 = 1; 
+                break; 
+            }
+            n = n->next;
+        }
+
         if (target_node->type == VAULT_DIR) return -1;
         if (in_c0) return -1;
     }
 
+    uint64_t cwd = 0;
+    for (uint8_t i = 0; i < fs->profile_count; i++) {
+        if (fs->profiles[i].profile_id == profile_id) {
+            cwd = fs->profiles[i].cwd_inode;
+            break;
+        }
+    }
+
     if (target_node == NULL) {
-        target_node = vaultfs_create(fs, profile_id, path, VAULT_FILE);
+        target_node = vaultfs_create(fs, profile_id, path, cwd, VAULT_FILE);
         if (target_node == NULL) return -1;
     } else if (in_c1) {
-        target_node = vaultfs_create(fs, profile_id, path, target_node->type);
+        target_node = vaultfs_create(fs, profile_id, path, cwd, VAULT_FILE);
         if (target_node == NULL) return -1;
     }
 
@@ -85,12 +137,11 @@ int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *d
     uint64_t phys = pmm_alloc_page();
     if (phys == 0) return -1;
 
-    if (!in_c0 && !in_c1 && target_node->data != NULL)
-        pmm_free_page((uint64_t)target_node->data);
+    if (!in_c0 && !in_c1 && target_node->data != NULL) pmm_free_page(virt_to_phys((uint64_t)target_node->data));
 
-    memcpy((void *)phys_to_virt(phys), data, size);
-    target_node->data = (uint8_t *)phys;
+    target_node->data = (uint8_t *)phys_to_virt(phys);
     target_node->size = size;
+    memcpy(target_node->data, data, size);
 
     return 0;
 }
@@ -99,125 +150,176 @@ int vaultfs_mkdir(VaultFs *fs, uint64_t profile_id, const char *path) {
     VaultNode *existing = vaultfs_resolve(fs, profile_id, path);
     if (existing != NULL) return -1;
 
-    VaultNode *node = vaultfs_create(fs, profile_id, path, VAULT_DIR);
+    uint64_t cwd = 0;
+    for (uint8_t i = 0; i < fs->profile_count; i++) {
+        if (fs->profiles[i].profile_id == profile_id) {
+            cwd = fs->profiles[i].cwd_inode;
+            break;
+        }
+    }
+    VaultNode *node = vaultfs_create(fs, profile_id, path, cwd, VAULT_DIR);
     if (node == NULL) return -1;
 
     return 0;
 }
 
 int vaultfs_delete(VaultFs *fs, uint64_t profile_id, const char *path) {
-
     for (uint8_t i = 0; i < fs->profile_count; i++) {
-        if (fs->profiles[i].profile_id == profile_id) {
-            for (uint8_t j = 0; j < fs->profiles[i].layer2.count; j++) {
-                if (strcmp(fs->profiles[i].layer2.nodes[j].name, path) == 0) {
-                    VaultNode *node = &fs->profiles[i].layer2.nodes[j];
-                    if (node->data != NULL) {
-                        pmm_free_page((uint64_t)node->data);
-                    }
-                    fs->profiles[i].layer2.nodes[j] = fs->profiles[i].layer2.nodes[fs->profiles[i].layer2.count - 1];
-                    fs->profiles[i].layer2.count--;
-                    return 0;
-                }
+        if (fs->profiles[i].profile_id != profile_id) continue;
+
+        VaultNode *prev = NULL;
+        VaultNode *curr = fs->profiles[i].layer2.head;
+        while (curr) {
+            if (strcmp(curr->name, path) == 0) {
+                if (curr->data != NULL) pmm_free_page(virt_to_phys((uint64_t)curr->data));
+                if (prev) {
+                    prev->next = curr->next;
+                } else {
+                    fs->profiles[i].layer2.head = curr->next;
+                }     
+                pmm_free_page(virt_to_phys((uint64_t)curr));
+                fs->profiles[i].layer2.count--;
+                return 0;
             }
+            prev = curr;
+            curr = curr->next;
         }
     }
 
-    for (uint8_t j = 0; j < fs->layer1.count; j++) {
-        if (strcmp(fs->layer1.nodes[j].name, path) == 0) {
-            if (fs->layer1.nodes[j].owner_profile_id != profile_id) {
-                return -1;
-            }
-            VaultNode *node = &fs->layer1.nodes[j];
-            if (node->data != NULL) {
-                pmm_free_page((uint64_t)node->data);
-            }
-            fs->layer1.nodes[j] = fs->layer1.nodes[fs->layer1.count - 1];
+    VaultNode *prev = NULL;
+    VaultNode *curr = fs->layer1.head;
+    while (curr) {
+        if (strcmp(curr->name, path) == 0) {
+            if (curr->owner_profile_id != profile_id) return -1;
+            if (curr->data != NULL) pmm_free_page(virt_to_phys((uint64_t)curr->data));
+            if (prev) {
+                prev->next = curr->next;
+            } else {
+                fs->layer1.head = curr->next;
+            }     
+            pmm_free_page(virt_to_phys((uint64_t)curr));
             fs->layer1.count--;
             return 0;
         }
+        prev = curr;
+        curr = curr->next;
     }
 
-    for (uint8_t j = 0; j < fs->layer0.count; j++) {
-        if (strcmp(fs->layer0.nodes[j].name, path) == 0) {
-            return -1;
-        }
+    curr = fs->layer0.head;
+    while (curr) {
+        if (strcmp(curr->name, path) == 0) return -1;
+        curr = curr->next;
     }
 
     return -1;
 }
 
 int vaultfs_publish(VaultFs *fs, uint64_t profile_id, const char *path) {
-    // syscall privilegie later
-    for(uint8_t i = 0; i < fs->profile_count; i++) {
-        if(fs->profiles[i].profile_id == profile_id) {
-            for(uint8_t j = 0; j < fs->profiles[i].layer2.count; j++) {
-                if(strcmp(fs->profiles[i].layer2.nodes[j].name, path) == 0) {
-                    VaultNode *node = &fs->profiles[i].layer2.nodes[j];
-                    if(node->type == VAULT_DELETED) return -1;
-                    if(fs->layer1.count >= 128) return -1;
-                    fs->layer1.nodes[fs->layer1.count] = *node;
-                    fs->layer1.nodes[fs->layer1.count].owner_profile_id = profile_id;
-                    fs->layer1.count++;
-                    fs->profiles[i].layer2.nodes[j] = fs->profiles[i].layer2.nodes[fs->profiles[i].layer2.count - 1];
-                    fs->profiles[i].layer2.count--;
-                    return 0;
+    for (uint8_t i = 0; i < fs->profile_count; i++) {
+        if (fs->profiles[i].profile_id != profile_id) continue;
+
+        VaultNode *prev = NULL;
+        VaultNode *curr = fs->profiles[i].layer2.head;
+        while (curr) {
+            if (strcmp(curr->name, path) == 0) {
+                if (curr->type == VAULT_DELETED) return -1;
+
+                if (prev) {
+                    prev->next = curr->next;
                 }
+                else {
+                    fs->profiles[i].layer2.head = curr->next;
+                }    
+                fs->profiles[i].layer2.count--;
+
+                curr->owner_profile_id = profile_id;
+                curr->next = fs->layer1.head;
+                fs->layer1.head = curr;
+                fs->layer1.count++;
+                return 0;
             }
+            prev = curr;
+            curr = curr->next;
         }
     }
     return -1;
 }
 
 int vaultfs_depublish(VaultFs *fs, uint64_t profile_id, const char *path) {
-    // syscall privilegie later
-    for(uint8_t i = 0; i < fs->layer1.count; i++) {
-        if(strcmp(fs->layer1.nodes[i].name, path) == 0) {
-            if(fs->layer1.nodes[i].owner_profile_id != profile_id) return -1;
+    VaultNode *prev = NULL;
+    VaultNode *curr = fs->layer1.head;
+    while (curr) {
+        if (strcmp(curr->name, path) == 0) {
+            if (curr->owner_profile_id != profile_id) return -1;
+
             for (uint8_t j = 0; j < fs->profile_count; j++) {
-              if (fs->profiles[j].profile_id != profile_id) continue;
-              if (fs->profiles[j].layer2.count >= 128) return -1;
-              fs->profiles[j].layer2.nodes[fs->profiles[j].layer2.count] = fs->layer1.nodes[i];
-              fs->profiles[j].layer2.nodes[fs->profiles[j].layer2.count].owner_profile_id = profile_id;
-              fs->profiles[j].layer2.count++;
+                if (fs->profiles[j].profile_id != profile_id) continue;
 
-              fs->layer1.nodes[i] = fs->layer1.nodes[fs->layer1.count - 1];
-              fs->layer1.count--;
+                if (prev) {
+                    prev->next = curr->next;
+                } else {
+                    fs->layer1.head = curr->next;
+                }
 
-              return 0;
+                fs->layer1.count--;
+
+                curr->next = fs->profiles[j].layer2.head;
+                fs->profiles[j].layer2.head = curr;
+                fs->profiles[j].layer2.count++;
+                return 0;
             }
         }
+        prev = curr;
+        curr = curr->next;
     }
-
     return -1;
 }
 
 int vaultfs_create_profile(VaultFs *fs, uint64_t profile_id, const char *name) {
-    if(fs->profile_count >= 16) return -1;
-    fs->profiles[fs->profile_count].profile_id = profile_id;
-    fs->profiles[fs->profile_count].layer2.count = 0;
+    if (fs->profile_count >= 16) return -1;
+    fs->profiles[fs->profile_count].profile_id    = profile_id;
+    fs->profiles[fs->profile_count].layer2.count  = 0;
+    fs->profiles[fs->profile_count].layer2.head   = NULL;
+    fs->profiles[fs->profile_count].cwd_inode = 0;
     memcpy(fs->profiles[fs->profile_count].name, name, 63);
     fs->profiles[fs->profile_count].name[63] = '\0';
     fs->profile_count++;
-
     return 0;
 }
 
 int vault_destroy_profile(VaultFs *fs, uint64_t profile_id) {
     for (uint8_t i = 0; i < fs->profile_count; i++) {
-        if (fs->profiles[i].profile_id == profile_id) {
-            for (uint8_t j = 0; j < fs->profiles[i].layer2.count; j++) {
-              VaultNode *node = &fs->profiles[i].layer2.nodes[j];
-                if (node->data != NULL && node->type != VAULT_DELETED) {
-                  pmm_free_page((uint64_t)node->data);
-                }
-            }
+        if (fs->profiles[i].profile_id != profile_id) continue;
 
-            fs->profiles[i] = fs->profiles[fs->profile_count - 1];
-            fs->profile_count--;
-
-            return 0;
+        VaultNode *curr = fs->profiles[i].layer2.head;
+        while (curr) {
+            VaultNode *next = curr->next;
+            if (curr->data != NULL)
+                pmm_free_page(virt_to_phys((uint64_t)curr->data)); 
+            pmm_free_page(virt_to_phys((uint64_t)curr));
+            curr = next;
         }
+
+        VaultNode *prev = NULL;
+        curr = fs->layer1.head;
+        while (curr) {
+            VaultNode *next = curr->next;
+            if (curr->owner_profile_id == profile_id) {
+                if (prev) prev->next = next;
+                else      fs->layer1.head = next;
+                if (curr->data != NULL) pmm_free_page(virt_to_phys((uint64_t)curr->data)); // supprime les data
+                pmm_free_page(virt_to_phys((uint64_t)curr)); // supprime le noeud
+                fs->layer1.count--;
+            } else {
+                prev = curr;
+            }
+            curr = next;
+        }
+
+        fs->profile_count--;
+        fs->profiles[i] = fs->profiles[fs->profile_count];
+
+        return 0;
     }
 
     return -1;
@@ -229,4 +331,163 @@ VaultProfile *vaultfs_find_profile_by_name(VaultFs *fs, const char *name) {
             return &fs->profiles[i];
     }
     return NULL;
+}
+
+// Fonctions pour le cd
+VaultNode *vaultfs_resolve_inode(VaultFs *fs, uint64_t profile_id, uint64_t inode_id) {
+    for (uint8_t i = 0; i < fs->profile_count; i++) {
+        if (fs->profiles[i].profile_id != profile_id) continue;
+        VaultNode *n = fs->profiles[i].layer2.head;
+        while (n) {
+            if (n->inode_id == inode_id) {
+                if (n->type == VAULT_DELETED) return NULL;
+                return n;
+            }
+            n = n->next;
+        }
+    }
+
+    VaultNode *n = fs->layer1.head;
+    while (n) {
+        if (n->inode_id == inode_id) return n;
+        n = n->next;
+    }
+
+    n = fs->layer0.head;
+    while (n) {
+        if (n->inode_id == inode_id) return n;
+        n = n->next;
+    }
+
+    return NULL;
+}
+
+VaultNode *vaultfs_resolve_path(VaultFs *fs, uint64_t profile_id, const char *path) {
+    uint64_t current_inode = 0;
+
+    if (path[0] == '/') {
+        current_inode = 0; 
+        path++;            
+    } else {
+        for (uint8_t i = 0; i < fs->profile_count; i++) {
+            if (fs->profiles[i].profile_id == profile_id) {
+                current_inode = fs->profiles[i].cwd_inode;
+                break;
+            }
+        }
+    }
+
+    if (path[0] == '\0') return vaultfs_resolve_inode(fs, profile_id, current_inode);
+
+    char segment[128];
+    const char *p = path;
+
+    while (*p != '\0') {
+        uint8_t len = 0;
+        while (*p != '/' && *p != '\0' && len < 127)
+            segment[len++] = *p++;
+        segment[len] = '\0';
+
+        if (*p == '/') p++;
+        VaultNode *found = NULL;
+
+        for (uint8_t i = 0; i < fs->profile_count; i++) {
+            if (fs->profiles[i].profile_id != profile_id) continue;
+            VaultNode *n = fs->profiles[i].layer2.head;
+            while (n) {
+                if (n->parent_inode == current_inode && strcmp(n->name, segment) == 0) {
+                    if (n->type == VAULT_DELETED) return NULL;
+                    found = n;
+                    break;
+                }
+                n = n->next;
+            }
+        }
+
+        if (!found) {
+            VaultNode *n = fs->layer1.head;
+            while (n) {
+                if (n->parent_inode == current_inode && strcmp(n->name, segment) == 0) {
+                    found = n;
+                    break;
+                }
+                n = n->next;
+            }
+        }
+
+        if (!found) {
+            VaultNode *n = fs->layer0.head;
+            while (n) {
+                if (n->parent_inode == current_inode && strcmp(n->name, segment) == 0) {
+                    found = n;
+                    break;
+                }
+                n = n->next;
+            }
+        }
+
+        if (found == NULL) return NULL;
+        if (*p != '\0' && found->type != VAULT_DIR) return NULL;
+
+        current_inode = found->inode_id;
+    }
+
+    return vaultfs_resolve_inode(fs, profile_id, current_inode);
+}
+
+int vaultfs_cd(VaultFs *fs, uint64_t profile_id, const char *path) {
+    VaultNode *node = vaultfs_resolve_path(fs, profile_id, path);
+    if (node == NULL) return -1;
+    if (node->type != VAULT_DIR) return -1;
+    
+    for (uint8_t i = 0; i < fs->profile_count; i++) {
+        if (fs->profiles[i].profile_id != profile_id) continue;
+        fs->profiles[i].cwd_inode = node->inode_id;
+        return 0;
+    }
+
+    return -1;
+}
+
+void vaultfs_get_cwd_path(VaultFs *fs, uint64_t profile_id, char *out, uint64_t max) {
+    uint64_t cwd = 0;
+    for (uint8_t i = 0; i < fs->profile_count; i++) {
+        if (fs->profiles[i].profile_id == profile_id) {
+            cwd = fs->profiles[i].cwd_inode;
+            break;
+        }
+    }
+
+    if (cwd == 0) {
+        out[0] = '/';
+        out[1] = '\0';
+        return;
+    }
+
+    char segments[32][128];
+    uint8_t depth = 0;
+    uint64_t current = cwd;
+
+    while (current != 0) {
+        VaultNode *node = vaultfs_resolve_inode(fs, profile_id, current);
+        if (node == NULL) break;
+
+        memcpy(segments[depth], node->name, 127);
+        segments[depth][127] = '\0';
+        depth++;
+
+        current = node->parent_inode;
+    }
+
+    uint64_t pos = 0;
+    for (int8_t i = depth - 1; i >= 0; i--) {
+        if (pos + 1 >= max) break;
+        out[pos++] = '/';
+
+        uint64_t len = strlen(segments[i]);
+        if (pos + len >= max) break;
+        memcpy(out + pos, segments[i], len);
+        pos += len;
+    }
+    out[pos] = '\0';
 }
