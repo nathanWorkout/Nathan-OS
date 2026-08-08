@@ -90,7 +90,7 @@ VaultOs adopte une architecture inspirée des noyaux monolithiques (Windows NT),
 |-----------|------|
 | **GDT** | Segments noyau / utilisateur |
 | **IDT** | 256 entrées, ISR stubs, gestion des exceptions CPU |
-| **TSS** | Stack kernel mise à jour à chaque context switch |
+| **TSS** | Switch de stack |
 | **PIC** | Remappé, IRQs gérés proprement |
 
 ### Graphique
