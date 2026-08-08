@@ -185,6 +185,9 @@ make full
 
 # Créer uniquement l'image (sans lancer QEMU)
 make img
+
+# Flasher l'image sur une clé USB
+make usb
 ```
 
 ---
