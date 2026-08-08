@@ -109,7 +109,7 @@ VaultOs adopte une architecture inspirée des noyaux monolithiques (Windows NT),
 
 ## VaultFs
 
-VaultFs est le système de fichiers conçu spécifiquement pour VaultOs. Aucun filesystem existant ne proposant d'isolation native par profil, il a été inventé from scratch pour incarner le principe central de l'OS.
+VaultFs est le système de fichiers conçu spécifiquement pour VaultOs. Aucun filesystem existant ne proposant d'isolation native par profil, il a été inventé de 0 pour incarner le principe central de l'OS.
 
 ### Modèle 3 couches
 
