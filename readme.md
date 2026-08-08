@@ -222,14 +222,15 @@ Nathan-OS/
 └── Makefile
 
 ```
-
 ### Ce qui est prévu
 
 **Interface graphique — 3 modes**
 
-- **Mode Windows-like** : un bureau clé en main avec beaucoup d'options de personnalisation, pour ceux qui veulent quelque chose de fonctionnel sans configuration.
-- **Mode tiling** : inspiré de Hyprland, Niri ou i3. Tu pars d'une interface vide et tu construis ton environnement via des scripts — la philosophie des WM Linux. Des presets seront proposés.
-- **Mode canvas infini** : inspiré de vxwm et Drift WM, un espace de travail 2D libre pour les esprits créatifs. Configurable via dotfiles, avec des presets disponibles.
+- **Mode Windows-like** : un environnement de bureau clé en main, avec un large panel d'options de personnalisation pour ceux qui souhaitent un système fonctionnel sans configuration préalable.
+
+- **Mode tiling** : inspiré de Hyprland, Niri ou i3. L'utilisateur part d'une interface vide et construit son environnement via des scripts — la philosophie des gestionnaires de fenêtres Linux. Des presets sont disponibles.
+
+- **Mode canvas infini** : inspiré de vxwm et Drift WM, un espace de travail 2D libre pensé pour les utilisateurs créatifs. Configurable via dotfiles, avec des presets disponibles.
 
 **Compatibilité logicielle**
 
