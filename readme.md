@@ -221,6 +221,8 @@ Nathan-OS/
 ├── linker.ld
 └── Makefile
 
+```
+
 ### Ce qui est prévu
 
 **Interface graphique — 3 modes**
