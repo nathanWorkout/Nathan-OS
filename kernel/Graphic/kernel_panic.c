@@ -30,8 +30,14 @@ static void draw_dec(Canvas *cv, int x, int y, uint64_t val, uint32_t color) {
     char buf[12];
     int i = 10;
     buf[11] = '\0';
-    if (val == 0) { buf[i--] = '0'; }
-    else { while (val > 0) { buf[i--] = '0' + (val % 10); val /= 10; } }
+    if (val == 0) { 
+        buf[i--] = '0';
+    }
+    else { 
+        while (val > 0) { 
+            buf[i--] = '0' + (val % 10); val /= 10; 
+        } 
+    }
     draw_string(cv, buf + i + 1, x, y, color, 2);
 }
 

@@ -135,7 +135,7 @@ void pmm_switch_to_full(void) {
 
 uint64_t pmm_alloc_page(void) {
     if (full_bitmap) {
-        // Full PMM 
+        // Full PMM
         uint64_t size = (full_bitmap_pages + 63) / 64;
         for (uint64_t i = 0; i < size; i++) {
             if (full_bitmap[i] == 0xFFFFFFFFFFFFFFFFULL) continue;
@@ -155,7 +155,7 @@ uint64_t pmm_alloc_page(void) {
         return 0;
     }
 
-    // Bootstrap PMM 
+    // Bootstrap PMM
     for (int i = 0; i < BITMAP_SIZE; i++) {
         if (bootstrap_bitmap[i] == 0xFFFFFFFFFFFFFFFFULL) continue;
         for (int bit = 0; bit < 64; bit++) {
@@ -209,4 +209,46 @@ void pmm_free_page(uint64_t addr) {
         return;
     }
     bs_clear(page);
+}
+
+uint64_t pmm_alloc_pages_contig(uint64_t count) {
+    if (count == 0) return 0;
+
+   uint64_t *bitmap;
+    uint64_t total;
+
+    if (full_bitmap) {
+        bitmap = full_bitmap;
+        total = full_bitmap_pages;
+    } else {
+        bitmap = bootstrap_bitmap;
+        total = MAX_PAGES;
+    }
+
+    uint64_t run = 0;
+    uint64_t run_start = 0;
+
+    for (uint64_t p = 1; p < total; p++) {
+        if (!(bitmap[p/64] & (1ULL << (p%64)))) {
+            if (run == 0) run_start = p;
+            run++;
+            if (run == count) {
+                for (uint64_t i = run_start; i < run_start + count; i++) {
+                    bitmap[i/64] |= (1ULL << (i%64));
+                }
+                return run_start * PAGE_SIZE;
+            }
+        } else {
+            run = 0;
+        }
+    }
+
+    return 0;
+}
+
+void pmm_free_pages_contig(uint64_t phys_addr, uint64_t count) {
+    uint64_t start = phys_addr / PAGE_SIZE;
+    for (uint64_t i = start; i < start + count; i++) {
+        pmm_free_page(i * PAGE_SIZE);
+    }
 }

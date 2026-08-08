@@ -9,6 +9,7 @@
 
 extern void irq0();
 extern void irq1();
+extern void irq12();
 
 void isr_init() {
     static void (*isr_table[32])() = {
@@ -18,9 +19,11 @@ void isr_init() {
         isr24, isr25, isr26, isr27, isr28, isr29, isr30, isr31
     };
 
-    for (int i = 0; i < 32; i++)
+    for (int i = 0; i < 32; i++) {
         idt_set_entry(i, (uint64_t)isr_table[i], 0x08, 0x8e);
-
+        idt_set_entry(0x2C, (uint64_t)irq12, 0x08, 0x8e);
+    }
+        
     idt_set_entry(32, (uint64_t)irq0, 0x08, 0x8e);
     idt_set_entry(33, (uint64_t)irq1, 0x08, 0x8e); // IST désactivé
 }

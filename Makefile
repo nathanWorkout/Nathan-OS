@@ -1,4 +1,4 @@
-# Outils 
+# Outils
 CC  = x86_64-elf-gcc
 AS  = nasm
 LD  = x86_64-elf-ld
@@ -25,10 +25,12 @@ CFLAGS = \
     -I kernel/memory      \
     -I kernel/drivers     \
     -I kernel/drivers/keyboard \
+    -I kernel/drivers/mouse \
     -I kernel/shell       \
     -I kernel/lib         \
     -I kernel/proc        \
     -I kernel/Graphic     \
+	-I kernel/Graphic/gui \
     -I kernel/VaultFs/
 
 ASFLAGS = -f elf64
@@ -49,9 +51,11 @@ C_SRCS = \
     $(wildcard $(KERNEL)/memory/*.c)            \
     $(wildcard $(KERNEL)/drivers/*.c)           \
     $(wildcard $(KERNEL)/drivers/keyboard/*.c)  \
+	$(wildcard $(KERNEL)/drivers/mouse/*.c)  \
     $(wildcard $(KERNEL)/shell/*.c)             \
     $(wildcard $(KERNEL)/proc/*.c)              \
     $(wildcard $(KERNEL)/Graphic/*.c)           \
+	$(wildcard $(KERNEL)/Graphic/gui/*.c)       \
 	$(wildcard $(KERNEL)/VaultFs/*.c)
 
 ASM_SRCS = \
@@ -91,11 +95,15 @@ $(BUILD)/%.o: $(KERNEL)/drivers/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/%.o: $(KERNEL)/drivers/keyboard/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD)/%.o: $(KERNEL)/drivers/mouse/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/%.o: $(KERNEL)/shell/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/%.o: $(KERNEL)/proc/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/%.o: $(KERNEL)/Graphic/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD)/%.o: $(KERNEL)/Graphic/gui/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/%.o: $(KERNEL)/VaultFs/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -109,22 +117,32 @@ $(BUILD)/%.o: $(KERNEL)/proc/%.asm
 
 img: $(BUILD)/kernel.elf
 	dd if=/dev/zero of=$(IMG) bs=512 count=524288
-	printf '\x80\x00\x02\x00\x0c\xfe\xff\xff\x00\x08\x00\x00\x00\xf8\x07\x00' | dd of=$(IMG) bs=1 seek=446 conv=notrunc
+	printf '\x00\x00\x02\x00\xef\xfe\xff\xff\x00\x08\x00\x00\x00\xf8\x07\x00' | dd of=$(IMG) bs=1 seek=446 conv=notrunc
 	printf '\x55\xaa' | dd of=$(IMG) bs=1 seek=510 conv=notrunc
 	mformat -i $(IMG)@@1M -F -v VAULTOS ::
+	mmd -i $(IMG)@@1M ::/EFI
+	mmd -i $(IMG)@@1M ::/EFI/BOOT
 	mmd -i $(IMG)@@1M ::/boot
+	mcopy -i $(IMG)@@1M $(LIMINE)/BOOTX64.EFI ::/EFI/BOOT/BOOTX64.EFI
 	mcopy -i $(IMG)@@1M $(BUILD)/kernel.elf ::/boot/kernel.elf
 	mcopy -i $(IMG)@@1M limine.conf ::/boot/limine.conf
-	mcopy -i $(IMG)@@1M $(LIMINE)/limine-bios.sys ::/limine-bios.sys
-	limine bios-install $(IMG)
 	limine enroll-config $(IMG) $(shell b2sum limine.conf | awk '{print $$1}' | tr -d '\n')
+	
+usb: $(IMG)
+	@echo "[!] Écriture de $(IMG) sur /dev/sda dans 3s... (Ctrl+C pour annuler)"
+	@sleep 3
+	sudo dd if=$(IMG) of=/dev/sda bs=4M status=progress
+	sync
+	@echo "[OK] Clé USB prête"
 
 run: $(IMG)
 	qemu-system-x86_64 \
+	    -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/OvmfX64/OVMF_CODE.fd \
+	    -drive if=pflash,format=raw,file=OVMF_VARS.fd \
 	    -drive format=raw,file=$(IMG),index=0,media=disk \
 	    -serial stdio \
 	    -m 128M \
-	    -display sdl 
+	    -display sdl
 
 debug: $(IMG)
 	qemu-system-x86_64 \

@@ -10,6 +10,7 @@
 #include "VaultFs/vaultfs.h"
 #include "memory/paging.h"
 #include "memory/pmm.h"
+#include "../Graphic/gui/default_profile.h"
 #include <stddef.h>
 
 
@@ -159,6 +160,11 @@ void shell_run(Canvas *cv) {
         }
         else if (strcmp(buf, "kernelpanic") == 0) kernel_panic_init(cv, NULL);
 
+        // test gui
+        else if (strcmp(buf, "testgui") == 0) {
+            default_profile_init(*cv);
+        }
+
         // VaultFs
         else if(strcmp(buf, "ls") == 0) {
             tty_set_color(COL_OUTPUT);
@@ -204,13 +210,19 @@ void shell_run(Canvas *cv) {
                         int masked = 0;
                         VaultNode *m = p->layer2.head;
                         while(m) {
-                            if(strcmp(m->name, n->name) == 0) { masked = 1; break; }
+                            if(strcmp(m->name, n->name) == 0) { 
+                                masked = 1; 
+                                break;
+                            }
                             m = m->next;
                         }
                         if(!masked) {
                             m = vaultfs.layer1.head;
                             while(m) {
-                                if(strcmp(m->name, n->name) == 0) { masked = 1; break; }
+                                if(strcmp(m->name, n->name) == 0) {
+                                    masked = 1; 
+                                    break; 
+                                }
                                 m = m->next;
                             }
                         }
@@ -228,7 +240,7 @@ void shell_run(Canvas *cv) {
             while(*space && *space != ' ') space++;
             if(*space == '\0') {
                 tty_set_color(COL_ERROR);
-                puts("usage: write <nom> <contenu>");
+                puts("usage: write <name> <content>");
             } else {
                 *space = '\0';
                 char *name = args;

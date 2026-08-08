@@ -3,6 +3,7 @@
 extern isr_handler
 extern irq0_handler
 extern irq1_handler
+extern irq12_handler
 extern serial_print
 
 global isr0,  isr1,  isr2,  isr3,  isr4,  isr5,  isr6,  isr7
@@ -10,7 +11,7 @@ global isr8,  isr9,  isr10, isr11, isr12, isr13, isr14, isr15
 global isr16, isr17, isr18, isr19, isr20, isr21, isr22, isr23
 global isr24, isr25, isr26, isr27, isr28, isr29, isr30, isr31
 global isr_common
-global irq0, irq1
+global irq0, irq1, irq12
 
 section .text
 
@@ -237,6 +238,51 @@ irq1:
 
     call irq1_handler
     
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+    pop rbp
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+
+    db 0x48
+    iret
+
+extern irq12_handler
+global irq12
+
+irq12:
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    push rbp
+    push r8
+    push r9
+    push r10
+    push r11
+    push r12
+    push r13
+    push r14
+    push r15
+
+    call irq12_handler
+
+    mov al, 0x20
+    out 0xA0, al    ; slave
+    out 0x20, al    ; master
+
     pop r15
     pop r14
     pop r13

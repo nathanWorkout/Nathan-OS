@@ -16,7 +16,7 @@ void serial_init() {
 void serial_putchar(char c) {
     // Attendre que le buffer d'émission soit vide
     // On le sais grâce au bit 5
-        // 0x20 car LSR retourne un octet de flag, faut pas comparer le bit entier car ca retourn 0b00100000 et 0x20 = bit 5 en hexa 
+    // 0x20 car LSR retourne un octet de flag, faut pas comparer le bit entier car ca retourn 0b00100000 et 0x20 = bit 5 en hexa 
 	while((inb(com1 + 5) & 0x20) == 0) {} // Attendre
 	outb(com1, c);
 }
