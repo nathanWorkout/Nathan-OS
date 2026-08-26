@@ -1,20 +1,19 @@
 #ifndef TTY_H
 #define TTY_H
-#include "gfx.h"
 
+#include "gfx.h"
 #include <stdint.h>
 
-void enable_cursor(uint8_t cursor_start, uint8_t cursor_end);
-void update_cursor(int x, int y);
-uint16_t get_cursor_position(void);
 void tty_init(Canvas c);
+void tty_clear(void);
+void tty_reboot(void);
+void tty_set_color(uint32_t c);
+void tty_draw_cursor(int visible);
+int  tty_get_cols(void);
+int  tty_get_rows(void);
+
 void putchar(char c);
 void puts(const char *s);
-int printk(const char *fmt, ...);
-void tty_set_color(uint32_t c);
-void tty_clear();
-void tty_reboot();
-void tty_draw_cursor(int visible);
-void tty_test();
+int  printk(const char *fmt, ...);
 
 #endif

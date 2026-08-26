@@ -17,6 +17,16 @@ static uint32_t read_u32_be(uint8_t *p) {
            ((uint32_t)p[3]);
 }
 
+uint32_t reverse_bits(int value, int nbits) {
+    int result = 0;
+    for (int i = 0; i < nbits; i++) {
+        result = (result << 1) | (value & 1);
+        value >>= 1;
+    }
+
+    return result;
+}
+
 int read_bits(BitReader *bit_reader, int n) {
     // DEFLATE lit les bits LSB -> MSB dans chaque octet
     if (n <= 0 || n > 32) return -1; // au cas ou
@@ -28,7 +38,7 @@ int read_bits(BitReader *bit_reader, int n) {
           Exemple : bit_reader->bits = 00000000000000000000000000000101;
                     bit_reader->bit_count = 3;                      [  ] bits valides
 
-                    on charge le prochian octet ; 11010110
+                    on charge le prochian octet : 11010110
                     (uint32_t) : 00000000000000000000000011010110 (conversion 32 bits)
                     << 3       : 00000000000000000000011010110000
                     |=         : 00000000000000000000011010110101
@@ -99,11 +109,14 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
         }
 
         else if (memcmp(type, "IDAT", 4) == 0) {
+        // un png peut avoir plusieurs chunks IDAT a la suite
+        // on doit donc tous les reunir dnas un buffer  
 
             uint8_t *buffer = kmalloc(context.idat_size + length);
 
             if (!buffer) return context;
 
+            // si c'est pas le premier IDAT
             if (context.idat_buffer != NULL) {
                 memcpy(buffer, context.idat_buffer, context.idat_size);
                 kfree(context.idat_buffer);
@@ -132,12 +145,12 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
         default:               bytes_per_pixel = 3; break;
     }
 
-    uint32_t pixels_size = (context.width * bytes_per_pixel + 1) * context.height;
-    context.pixels = kmalloc(pixels_size);
+    uint32_t pixels_size = (context.width * bytes_per_pixel + 1) * context.height; // +1 car c'est un filtre byte chaque lignes png commence par un octet qui indique le type de filtre appliqué
+    context.pixels = kmalloc(pixels_size); // buffer qui va recevoir la sortie du DEFLATE compresser
     if (!context.pixels) return context;
 
 
-    if (context.idat_size >= 6) { // 2 + DEFLATE + 4 ;  4 + 2 = 6
+    if (context.idat_size >= 6) { // 2 + DEFLATE + 4 :  4 + 2 = 6
         // header zlib
         uint8_t *compressed_data = context.idat_buffer + 2; // Pas besoin de décoder CMF et FLG pour la v1
         uint32_t compressed_size = context.idat_size - 6;
@@ -154,7 +167,7 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
         uint32_t output_pos = 0;
 
         int BFINAL = read_bits(&bit_reader, 1);
-        int BTYPE  = read_bits(&bit_reader, 2);
+        int BTYPE  = read_bits(&bit_reader, 2); // type de compression
 
         do {
             switch (BTYPE) {
@@ -164,6 +177,7 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
 
                     // masque les bit restant et commence au prochain octet
                     // LEN
+                    // exemple : on lis 2 octets en little endian 0x05 | (0x00 << 8) = 5
                     uint16_t len = bit_reader.data[bit_reader.pos] | (bit_reader.data[bit_reader.pos + 1] << 8);
                     bit_reader.pos += 2;
 
@@ -171,11 +185,13 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                     uint16_t nlen = bit_reader.data[bit_reader.pos] | (bit_reader.data[bit_reader.pos + 1] << 8);
                     bit_reader.pos += 2;
 
-                    if ((uint16_t)~len != nlen) return context; // Vérification au cas ou
+                    // est ce que nlen est bien le complément de nlen
+                    if ((uint16_t)~len != nlen) return context;
 
                     memcpy(context.pixels + output_pos, bit_reader.data + bit_reader.pos, len);
                     bit_reader.pos += len;
                     output_pos += len;
+                    // pas de decompression on copie len dnas pixels
 
                     break; // bloc non compresser
 
@@ -192,6 +208,25 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                     // compte la taille de chaques symbole récurssivement
                     for (int i = 0; i < 288; i++) bl_count[lengths[i]]++;
 
+                    /*
+                      Exemple :
+                      A = 2 bits
+                      B = 2 bits
+                      C = 3 bits
+                      D = 3 bits
+
+                      donc bl_count[2] = 2 et bl_count[3] = 2 car 2 codes de 2 bits et 2 codes de 3
+
+                      Algo :
+                      Logiquement :
+                      A = 00
+                      B = 01
+                      C = 10
+                      D = 11
+
+                      mais C et D font 3 bits donc << donc next_code[3] = 100 et [4] = 110
+                     */
+
                     uint16_t next_code[16] = {0};
                     uint16_t code = 0;
                     for (int bits = 1; bits < 16; bits++) {
@@ -206,6 +241,8 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                             table.lengths[i] = lengths[i];
                         }
                     }
+
+                    
 
                     break; // Huffman fixe
                 case 2: break; // Hufmann dynamique

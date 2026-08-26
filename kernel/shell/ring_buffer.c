@@ -17,7 +17,6 @@
 #define VERSION "0.1"
 #define BUILD_DATE __DATE__
 #define BUILD_TIME __TIME__
-#define TTY_COLS 160
 #define COL_ASCII    rgba( 10, 132, 255, 255)
 #define COL_PROMPT   rgba( 10, 132, 255, 255)
 #define COL_PROMPT2  rgba( 99,  99, 102, 255)
@@ -95,7 +94,7 @@ void readline(char *buffer, int max) {
 int strlen(const char *s);
 
 void print_centered(const char *str) {
-    int pad = (TTY_COLS - strlen(str)) / 2;
+    int pad = (tty_get_cols() - strlen(str)) / 2;
     for (int i = 0; i < pad; i++) putchar(' ');
     puts(str);
 }
