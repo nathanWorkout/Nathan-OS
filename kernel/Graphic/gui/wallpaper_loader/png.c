@@ -242,7 +242,75 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                         }
                     }
 
-                    
+                   int code = 0;
+                   int nbits = 0;
+                   int done;
+
+                   // tableaux rfc
+                   static const int length_base[]  = 
+                   { 
+                   3, 4, 5, 6, 7, 8, 10, 12, 14, 16,
+                   18, 22, 26, 30, 34, 42, 50, 58, 66, 82,
+                   98, 114, 130, 162, 194, 226, 258
+                   };
+
+                   static const int length_extra[] = 
+                   {
+                   0, 0, 0, 0, 0, 1, 1, 1, 1, 2,
+                   2, 2, 2, 2, 3, 3, 3, 3, 4, 4,
+                   4, 4, 5, 5, 5, 5, 0
+                   };
+
+                   static const int distance_base[] =
+                   {
+                   1, 2, 3, 4, 5, 7, 9, 13, 17, 25,
+                   33, 49, 65, 97, 129, 193, 257, 385, 513, 769,
+                   1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289,
+                   16385, 24577
+                   };
+
+                   static const int distance_extra[] =
+                   {
+                   0, 0 ,0, 0, 1, 1, 2, 2, 3, 3,
+                   4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+                   9, 9, 10, 10, 11, 11, 12, 12,
+                   13, 13
+                   };
+         
+
+                   while (done != 1) {
+                       int next_bit = read_bits(&bit_reader, 1);
+                       code = (code << 1) | next_bit;
+                       nbits++;
+
+                       for (int i = 0; i < 288; i++) {
+                            if (table.lengths[i] == nbits && table.codes[i] == code) {
+                                if (i >= 0 && i <= 255) { //octet a ecrire
+                                    context.pixels[output_pos] = i;
+                                    output_pos++;
+                                }
+                            else if (i == 256) { // fin du bloc
+                                done = 1;
+                            }
+                            else if (i >= 257 && i <= 285) { // back reference
+                                int length = length_base[i - 257] + read_bits(&bit_reader, length_extra[i - 257]); 
+                                int code_dist = read_bits(&bit_reader, 5);
+                                int distance = distance_base[code_dist] + read_bits(&bit_reader, distance_extra[code_dist]);
+
+                                for (int j = 0; j < length; j++) {
+                                    context.pixels[output_pos] = context.pixels[output_pos - distance];
+                                    output_pos++;
+                                }
+                                // ici on copie les blocs similaires (optimisation de la rfc indispensable pour la decompression)
+                                // pas de memcpy car il peut arriver que la source et la dest pointe au meme endroit
+                                // sinon ca pourrai faire pour abc -> abab la boucle donne abcabc
+                            }
+                            code  = 0;
+                            nbits = 0;
+                            break;
+                       }
+                   } 
+}
 
                     break; // Huffman fixe
                 case 2: break; // Hufmann dynamique
