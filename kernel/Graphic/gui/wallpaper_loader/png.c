@@ -70,6 +70,17 @@ int read_bits(BitReader *bit_reader, int n) {
     return value;
 }
 
+// algo de filtrage
+int paeth(int a, int b, int c) {
+    int p  = a + b - c;
+    int pa = p - a; if (pa < 0) pa = -pa;
+    int pb = p - b; if (pb < 0) pb = -pb;
+    int pc = p - c; if (pc < 0) pc = -pc;
+    
+    if (pa <= pb && pa <= pc) return a;
+    if (pb <= pc)             return b;
+    return c;
+}
 
 PngContext png_decode(uint8_t *data, uint32_t size) {
     PngContext context = {0};
@@ -195,7 +206,7 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
 
                     break; // bloc non compresser
 
-                case 1:
+                case 1: {
                     // Valeures RFC 1951
                     uint8_t lengths[288];
 
@@ -242,9 +253,9 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                         }
                     }
 
-                   int code = 0;
+                   int huff_code = 0;
                    int nbits = 0;
-                   int done;
+                   int done = 0;
 
                    // tableaux rfc
                    static const int length_base[]  = 
@@ -280,44 +291,290 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
 
                    while (done != 1) {
                        int next_bit = read_bits(&bit_reader, 1);
-                       code = (code << 1) | next_bit;
+                       huff_code = (huff_code << 1) | next_bit;
                        nbits++;
 
                        for (int i = 0; i < 288; i++) {
-                            if (table.lengths[i] == nbits && table.codes[i] == code) {
+                            if (table.lengths[i] == nbits && table.codes[i] == huff_code) {
                                 if (i >= 0 && i <= 255) { //octet a ecrire
                                     context.pixels[output_pos] = i;
                                     output_pos++;
                                 }
-                            else if (i == 256) { // fin du bloc
-                                done = 1;
-                            }
-                            else if (i >= 257 && i <= 285) { // back reference
-                                int length = length_base[i - 257] + read_bits(&bit_reader, length_extra[i - 257]); 
-                                int code_dist = read_bits(&bit_reader, 5);
-                                int distance = distance_base[code_dist] + read_bits(&bit_reader, distance_extra[code_dist]);
-
-                                for (int j = 0; j < length; j++) {
-                                    context.pixels[output_pos] = context.pixels[output_pos - distance];
-                                    output_pos++;
+                                else if (i == 256) { // fin du bloc
+                                    done = 1;
                                 }
-                                // ici on copie les blocs similaires (optimisation de la rfc indispensable pour la decompression)
-                                // pas de memcpy car il peut arriver que la source et la dest pointe au meme endroit
-                                // sinon ca pourrai faire pour abc -> abab la boucle donne abcabc
+                                else if (i >= 257 && i <= 285) { // back reference
+                                    int length = length_base[i - 257] + read_bits(&bit_reader, length_extra[i - 257]); 
+                                    int code_dist = read_bits(&bit_reader, 5);
+                                    int distance = distance_base[code_dist] + read_bits(&bit_reader, distance_extra[code_dist]);
+
+                                    for (int j = 0; j < length; j++) {
+                                        context.pixels[output_pos] = context.pixels[output_pos - distance];
+                                        output_pos++;
+                                    }
+                                    // ici on copie les blocs similaires (optimisation de la rfc indispensable pour la decompression)
+                                    // pas de memcpy car il peut arriver que la source et la dest pointe au meme endroit
+                                    // sinon ca pourrai faire pour abc -> abab la boucle donne abcabc
+                                }
+                                huff_code  = 0;
+                                nbits = 0;
+                                break;
                             }
-                            code  = 0;
-                            nbits = 0;
-                            break;
-                       }
-                   } 
-}
+                        }    
+                    }
 
                     break; // Huffman fixe
-                case 2: break; // Hufmann dynamique
+                }
+
+                case 2: {
+                    // spec DEFLATE
+                    int HLIT  = read_bits(&bit_reader, 5) + 257; 
+                    int HDIST = read_bits(&bit_reader, 5) + 1;
+                    int HCLEN = read_bits(&bit_reader, 4) + 4;
+
+                    int order[19] = {
+                    16,17,18,0,8,
+                    7,9,6,10,5,
+                    11,4,12,3,
+                    13,2,14,1,15
+                    };
+                    uint8_t code_lengths[19] = {0};
+
+                    for (int i = 0; i < HCLEN; i++) {
+                        code_lengths[order[i]] = read_bits(&bit_reader, 3);
+                    }
+                    
+                    // construction de la premiere table huffman (preparation plutot pour les 2 prochaines tables)
+                    uint16_t bl_count[16] = {0};
+                    for (int i = 0; i < 19; i++) bl_count[code_lengths[i]]++;
+
+                    uint16_t next_code[16] = {0};
+                    uint16_t code = 0;
+                    for (int bits = 1; bits < 16; bits++) {
+                        code = (code + bl_count[bits - 1]) << 1;
+                        next_code[bits] = code;
+                    }
+
+                    HuffmanTable cl_table = {0};
+                    for (int i = 0; i < 19; i++) {
+                        if (code_lengths[i] != 0) {
+                            cl_table.codes[i]   = next_code[code_lengths[i]]++;
+                            cl_table.lengths[i] = code_lengths[i];
+                        }
+                    }
+
+                    uint8_t all_lengths[HLIT + HDIST];
+                    int index = 0;
+                    int huff_code = 0;
+                    int nbits = 0;
+
+                    while (index < HLIT + HDIST) {
+                        int next_bit = read_bits(&bit_reader, 1);
+                        huff_code = (huff_code << 1) | next_bit;
+                        nbits++;
+
+                        // va servir a construire les 2 tables huffman avec les litteraux/longueur et celle  des distances
+                        for (int i = 0; i < 19; i++) {
+                            if (cl_table.lengths[i] == nbits && cl_table.codes[i] == huff_code) {
+                                if (i >= 0 && i <= 15) {
+                                    all_lengths[index] = i;
+                                    index++;
+                                }
+                                else if (i == 16) { 
+                                    int repeat = read_bits(&bit_reader, 2) + 3; // spec si on repete moins de 3 fois ca sert a rien autant les ecrire en brut ca economise des bits
+                                    for (int j = 0; j < repeat; j++) {
+                                        all_lengths[index] = all_lengths[index - 1];
+                                        index++;
+                                    }
+                                    // on copie j fois le symbole que la compression nous indique de faire
+                                }
+                                else if (i == 17) {
+                                    int repeat = read_bits(&bit_reader, 3) + 3; 
+                                    for (int j = 0; j < repeat; j++) {
+                                        all_lengths[index] = 0;
+                                        index++;
+                                    }
+                                }
+                                else if (i == 18) {
+                                    int repeat = read_bits(&bit_reader, 7) + 11;
+                                    for (int j = 0; j < repeat; j++) {
+                                        all_lengths[index] = 0;
+                                        index++;
+                                    }
+                                }
+                            }
+                        }  
+                    }
+
+                    // LIT TABLE
+                    uint16_t bl_count2[16] = {0};
+                    for (int i = 0; i < HLIT; i++) bl_count2[all_lengths[i]]++;
+
+                    uint16_t next_code2[16] = {0};
+                    uint16_t code2 = 0;
+                    for (int bits = 1; bits < 16; bits++) {
+                        code2 = (code2 + bl_count2[bits - 1]) << 1;
+                        next_code2[bits] = code2;
+                    }
+
+                    // table qui decode les symboles 0-285 (octets litteraux + back reference)
+                    HuffmanTable lit_table = {0};
+                    for (int i = 0; i < HLIT; i++) {
+                        if (all_lengths[i] != 0) {
+                            lit_table.codes[i]   = next_code2[all_lengths[i]]++;
+                            lit_table.lengths[i] = all_lengths[i];
+                        }
+                    }
+                               
+                    // DIST TABLE
+                    uint16_t bl_count3[16] = {0};
+                    for (int i = 0; i < HDIST; i++) bl_count3[all_lengths[i]]++;
+
+                    uint16_t next_code3[16] = {0};
+                    uint16_t code3 = 0;
+                    for (int bits = 1; bits < 16; bits++) {
+                        code3 = (code3 + bl_count3[bits - 1]) << 1;
+                        next_code3[bits] = code3;
+                    }
+
+                    // table qui decode les symboles 0-285 (octets litteraux + back reference)
+                    HuffmanTable dist_table = {0};
+                    for (int i = 0; i < HDIST; i++) {
+                        if (all_lengths[HLIT + i] != 0) { // pour lire les distances sinon on lit les litteraux
+                            dist_table.codes[i]   = next_code3[all_lengths[i]]++;
+                            dist_table.lengths[i] = all_lengths[HLIT + i];
+                        }
+                    }
+
+                    static const int length_base[]  = 
+                   { 
+                   3, 4, 5, 6, 7, 8, 10, 12, 14, 16,
+                   18, 22, 26, 30, 34, 42, 50, 58, 66, 82,
+                   98, 114, 130, 162, 194, 226, 258
+                   };
+
+                   static const int length_extra[] = 
+                   {
+                   0, 0, 0, 0, 0, 1, 1, 1, 1, 2,
+                   2, 2, 2, 2, 3, 3, 3, 3, 4, 4,
+                   4, 4, 5, 5, 5, 5, 0
+                   };
+
+                   static const int distance_base[] =
+                   {
+                   1, 2, 3, 4, 5, 7, 9, 13, 17, 25,
+                   33, 49, 65, 97, 129, 193, 257, 385, 513, 769,
+                   1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289,
+                   16385, 24577
+                   };
+
+                   static const int distance_extra[] =
+                   {
+                   0, 0 ,0, 0, 1, 1, 2, 2, 3, 3,
+                   4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+                   9, 9, 10, 10, 11, 11, 12, 12,
+                   13, 13
+                   };
+
+                    int done = 0;
+                    while (done != 1) {
+                       int next_bit = read_bits(&bit_reader, 1);
+                       huff_code = (huff_code << 1) | next_bit;
+                       nbits++;
+
+                       for (int i = 0; i < 288; i++) {
+                            if (lit_table.lengths[i] == nbits && lit_table.codes[i] == huff_code) {
+                                if (i >= 0 && i <= 255) {
+                                    context.pixels[output_pos] = i;
+                                    output_pos++;
+                                }
+                                else if (i == 256) {
+                                    done = 1;
+                                }
+                                else if (i >= 257 && i <= 285) {
+                                    int length = length_base[i - 257] + read_bits(&bit_reader, length_extra[i - 257]); 
+                                    
+                                    int dist_huff = 0;
+                                    int dist_nbits = 0;
+                                    int code_dist = 0;
+
+                                    // on cherche tant que c'est pas un symbole, pour cela il faut que dist_huff et dist_nbits matchent
+                                    while (1) {
+                                        dist_huff = (dist_huff << 1) | read_bits(&bit_reader, 1); 
+                                        dist_nbits++;
+                                        for (int d = 0; d < HDIST; d++) {
+                                            if (dist_table.lengths[d] == dist_nbits && dist_table.codes[d] == dist_huff) {
+                                                code_dist = d;
+                                                goto found_dist;
+                                            }
+                                        }
+                                    }
+                                    found_dist:;
+
+                                    int distance = distance_base[code_dist] + read_bits(&bit_reader, distance_extra[code_dist]);
+
+                                    for (int j = 0; j < length; j++) {
+                                        context.pixels[output_pos] = context.pixels[output_pos - distance];
+                                        output_pos++;
+                                    }
+                                }
+                                huff_code  = 0;
+                                nbits = 0;
+                                break;
+                            }
+                        }    
+                    }
+
+                    break; // Hufman dynamique
+                }
+
                 case 3: return context; // invalide
             }
         } while (!BFINAL);
+
+        // Lors de la compression, l'algo applique un filtre : il augmente certain pixel ex : 100 -> 101 -> 102...
+        // C'est parce que DEFLATE optimise dans ce cas. Il transforme en 1, 1, 1... et applique des opti
+        // structure de context.picxels apres DEFLATE : [filtre][pixel][pixel]...[filtre][pixel][pixel]...
+        //                                                |ligne 0                 |ligne 1
+        for (uint32_t y = 0; y < context.height; y++) {
+            uint32_t row_start = y * (context.width * bytes_per_pixel + 1);
+            uint8_t filter = context.pixels[row_start];
+                
+            for (uint32_t x = 0; x < context.width * bytes_per_pixel; x++) {
+                uint32_t index = row_start + 1 + x; // +1 pour sauter l'octet de filtre
+                uint8_t left;
+                uint8_t up;
+                uint8_t up_left;
+
+                if (x >= bytes_per_pixel) {
+                    left = context.pixels[index - bytes_per_pixel];
+                } else {
+                    left = 0;
+                }
+
+                if (y > 0) {
+                    up = context.pixels[index - (context.width * bytes_per_pixel + 1)];
+                } else {
+                    up = 0;
+                }
+
+                if (y > 0 && x >= bytes_per_pixel) {
+                    up_left = context.pixels[index - (context.width * bytes_per_pixel + 1) - bytes_per_pixel];
+                } else {
+                    up_left = 0;
+                }
+
+                switch (filter) {
+                    case 0: break;
+                    case 1: context.pixels[index] += left;            break;
+                    case 2: context.pixels[index] += up;              break;
+                    case 3: context.pixels[index] += (left + up) / 2; break;
+                    case 4: context.pixels[index] += paeth(left, up, up_left);
+                }
+            }
+        }
     }
 
     return context;
 }
+
