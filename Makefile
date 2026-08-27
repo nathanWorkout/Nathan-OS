@@ -33,6 +33,9 @@ CFLAGS = \
 	-I kernel/Graphic/gui \
     -I kernel/VaultFs/
 
+WALLPAPER = kernel/Graphic/gui/wallpaper_loader/wallpaper.png
+WALLPAPER_OBJ = $(BUILD)/wallpaper.o
+
 ASFLAGS = -f elf64
 
 BUILD  = build
@@ -56,7 +59,8 @@ C_SRCS = \
     $(wildcard $(KERNEL)/proc/*.c)              \
     $(wildcard $(KERNEL)/Graphic/*.c)           \
 	$(wildcard $(KERNEL)/Graphic/gui/*.c)       \
-	$(wildcard $(KERNEL)/VaultFs/*.c)
+	$(wildcard $(KERNEL)/VaultFs/*.c)          \
+	$(wildcard $(KERNEL)/Graphic/gui/wallpaper_loader/*.c)
 
 ASM_SRCS = \
     $(filter-out $(KERNEL)/entry.asm, $(wildcard $(KERNEL)/*.asm)) \
@@ -68,9 +72,11 @@ ASM_OBJS = $(patsubst %.asm, $(BUILD)/%.o, $(notdir $(ASM_SRCS)))
 
 all: $(BUILD)/kernel.elf
 
-$(BUILD)/kernel.elf: $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS) linker.ld
-	$(LD) $(LDFLAGS) -o $@ $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS)
+$(BUILD)/kernel.elf: $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS) $(WALLPAPER_OBJ) linker.ld
+	$(LD) $(LDFLAGS) -o $@ $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS) $(WALLPAPER_OBJ)
 	@echo "[OK] kernel.elf généré"
+
+
 
 $(BUILD)/entry.o: $(KERNEL)/entry.asm
 	$(AS) $(ASFLAGS) $< -o $@
@@ -107,6 +113,8 @@ $(BUILD)/%.o: $(KERNEL)/Graphic/gui/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/%.o: $(KERNEL)/VaultFs/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD)/%.o: $(KERNEL)/Graphic/gui/wallpaper_loader/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/%.o: $(KERNEL)/%.asm
 	$(AS) $(ASFLAGS) $< -o $@
@@ -114,6 +122,11 @@ $(BUILD)/%.o: $(KERNEL)/idt/%.asm
 	$(AS) $(ASFLAGS) $< -o $@
 $(BUILD)/%.o: $(KERNEL)/proc/%.asm
 	$(AS) $(ASFLAGS) $< -o $@
+$(BUILD)/kernel.elf: $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS) $(WALLPAPER_OBJ) linker.ld
+	$(LD) $(LDFLAGS) -o $@ $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS) $(WALLPAPER_OBJ)
+
+$(WALLPAPER_OBJ): $(WALLPAPER)
+	objcopy -O elf64-x86-64 -B i386 -I binary $< $@
 
 img: $(BUILD)/kernel.elf
 	dd if=/dev/zero of=$(IMG) bs=512 count=524288
@@ -141,7 +154,7 @@ run: $(IMG)
 	    -drive if=pflash,format=raw,file=OVMF_VARS.fd \
 	    -drive format=raw,file=$(IMG),index=0,media=disk \
 	    -serial stdio \
-	    -m 128M \
+	    -m 256M \
 	    -display sdl
 
 debug: $(IMG)

@@ -15,6 +15,7 @@ typedef struct VaultNode {
     VaultNodeType type;
     uint8_t *data;
     uint64_t size;
+    uint64_t data_pages; 
     uint64_t owner_profile_id;
     struct VaultNode *next; 
 } VaultNode;

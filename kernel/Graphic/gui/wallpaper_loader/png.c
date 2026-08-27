@@ -1,7 +1,9 @@
 #include <stdint.h>
+#include <stddef.h>
 #include "../lib/string.h"
 #include "../memory/kmalloc.h"
 #include "png.h"
+#include "tty.h"
 
 /* c'est stocké comme ça
     +------------+----------+--------------+----------+
@@ -10,7 +12,7 @@
  */
 
 // l'ordinateur stocke les bits en little endian, mais le format png le stocke en big endian
-static uint32_t read_u32_be(uint8_t *p) {
+uint32_t read_u32_be(uint8_t *p) {
     return ((uint32_t)p[0] << 24) |
            ((uint32_t)p[1] << 16) |
            ((uint32_t)p[2] <<  8) |
@@ -84,6 +86,11 @@ int paeth(int a, int b, int c) {
 
 PngContext png_decode(uint8_t *data, uint32_t size) {
     PngContext context = {0};
+    printk("png_decode start\n");
+
+    if (size < 8) { printk("header is too small\n"); return context; }
+    if (memcmp(data, PNG_MAGIC_NUMBER, 8) != 0) { printk("magic number have problem\n"); return context; }
+    printk("magic is good\n");
 
     if (size < 8) return context;
     if (memcmp(data, PNG_MAGIC_NUMBER, 8) != 0) return context;
@@ -146,6 +153,8 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
         ptr += length;
         ptr += 4;
     }
+        printk("chunks are good w=%d h=%d idat=%d\n", context.width, context.height, context.idat_size);
+
 
     uint32_t bytes_per_pixel;
     switch (context.color_type) {
@@ -309,6 +318,7 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                                     int distance = distance_base[code_dist] + read_bits(&bit_reader, distance_extra[code_dist]);
 
                                     for (int j = 0; j < length; j++) {
+                                        if (output_pos >= pixels_size) return context;
                                         context.pixels[output_pos] = context.pixels[output_pos - distance];
                                         output_pos++;
                                     }
@@ -428,7 +438,8 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                                
                     // DIST TABLE
                     uint16_t bl_count3[16] = {0};
-                    for (int i = 0; i < HDIST; i++) bl_count3[all_lengths[i]]++;
+                    for (int i = 0; i < HDIST; i++) bl_count3[all_lengths[HLIT + i]]++; 
+
 
                     uint16_t next_code3[16] = {0};
                     uint16_t code3 = 0;
@@ -514,6 +525,7 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                                     int distance = distance_base[code_dist] + read_bits(&bit_reader, distance_extra[code_dist]);
 
                                     for (int j = 0; j < length; j++) {
+                                        if (output_pos == 0 || distance > output_pos) return context;
                                         context.pixels[output_pos] = context.pixels[output_pos - distance];
                                         output_pos++;
                                     }
@@ -527,6 +539,7 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
 
                     break; // Hufman dynamique
                 }
+
 
                 case 3: return context; // invalide
             }

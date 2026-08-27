@@ -54,7 +54,7 @@ typedef struct {
     uint8_t  *pixels;
 } PngContext;
 
-static uint32_t read_u32_be(uint8_t *p);
+uint32_t read_u32_be(uint8_t *p);
 int read_bits(BitReader *bit_reader, int n);
 PngContext png_decode(uint8_t *data, uint32_t size);
 

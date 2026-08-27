@@ -2,6 +2,7 @@
 #include "memory/pmm.h"
 #include "vaultfs.h"
 #include "string.h"
+#include "../kernel/Graphic/gui/wallpaper_loader/png.h"
 
 void vaultfs_init(VaultFs *fs) {
     memset(fs, 0, sizeof(VaultFs));
@@ -62,6 +63,7 @@ uint8_t *vaultfs_read(VaultFs *fs, uint64_t profile_id, const char *path, uint64
     if (node->data == NULL) return NULL;
     *size_out = node->size;
     return node->data; 
+
 }
 
 VaultNode *vaultfs_create(VaultFs *fs, uint64_t profile_id, const char *name, uint64_t parent_inode, VaultNodeType type) {
@@ -133,14 +135,22 @@ int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *d
         if (target_node == NULL) return -1;
     }
 
-    if (size > PAGE_SIZE) return -1;
-    uint64_t phys = pmm_alloc_page();
+    uint64_t pages_needed = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+    // si size = 5000
+    // (5000 + 4095) / 4096
+    // = 9095 / 4096
+     // = 2 avec juste size / PAGE_SIZE c'est pasw assez
+    if (pages_needed == 0) pages_needed = 1;
+
+    uint64_t phys = pmm_alloc_pages_contig(pages_needed);
     if (phys == 0) return -1;
 
-    if (!in_c0 && !in_c1 && target_node->data != NULL) pmm_free_page(virt_to_phys((uint64_t)target_node->data));
+    if (!in_c0 && !in_c1 && target_node->data != NULL)
+        pmm_free_pages_contig(virt_to_phys((uint64_t)target_node->data), target_node->data_pages);
 
-    target_node->data = (uint8_t *)phys_to_virt(phys);
-    target_node->size = size;
+    target_node->data       = (uint8_t *)phys_to_virt(phys);
+    target_node->size       = size;
+    target_node->data_pages = pages_needed;
     memcpy(target_node->data, data, size);
 
     return 0;
@@ -171,7 +181,7 @@ int vaultfs_delete(VaultFs *fs, uint64_t profile_id, const char *path) {
         VaultNode *curr = fs->profiles[i].layer2.head;
         while (curr) {
             if (strcmp(curr->name, path) == 0) {
-                if (curr->data != NULL) pmm_free_page(virt_to_phys((uint64_t)curr->data));
+                if (curr->data != NULL) pmm_free_pages_contig(virt_to_phys((uint64_t)curr->data), curr->data_pages);
                 if (prev) {
                     prev->next = curr->next;
                 } else {
@@ -191,7 +201,7 @@ int vaultfs_delete(VaultFs *fs, uint64_t profile_id, const char *path) {
     while (curr) {
         if (strcmp(curr->name, path) == 0) {
             if (curr->owner_profile_id != profile_id) return -1;
-            if (curr->data != NULL) pmm_free_page(virt_to_phys((uint64_t)curr->data));
+            if (curr->data != NULL) pmm_free_pages_contig(virt_to_phys((uint64_t)curr->data), curr->data_pages);
             if (prev) {
                 prev->next = curr->next;
             } else {
@@ -295,7 +305,7 @@ int vault_destroy_profile(VaultFs *fs, uint64_t profile_id) {
         while (curr) {
             VaultNode *next = curr->next;
             if (curr->data != NULL)
-                pmm_free_page(virt_to_phys((uint64_t)curr->data)); 
+                pmm_free_pages_contig(virt_to_phys((uint64_t)curr->data), curr->data_pages);
             pmm_free_page(virt_to_phys((uint64_t)curr));
             curr = next;
         }
@@ -307,7 +317,8 @@ int vault_destroy_profile(VaultFs *fs, uint64_t profile_id) {
             if (curr->owner_profile_id == profile_id) {
                 if (prev) prev->next = next;
                 else      fs->layer1.head = next;
-                if (curr->data != NULL) pmm_free_page(virt_to_phys((uint64_t)curr->data)); // supprime les data
+                if (curr->data != NULL)
+                    pmm_free_pages_contig(virt_to_phys((uint64_t)curr->data), curr->data_pages);// supprime les data
                 pmm_free_page(virt_to_phys((uint64_t)curr)); // supprime le noeud
                 fs->layer1.count--;
             } else {

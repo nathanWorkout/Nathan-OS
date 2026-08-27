@@ -11,6 +11,7 @@
 #include "memory/paging.h"
 #include "memory/pmm.h"
 #include "../Graphic/gui/default_profile.h"
+#include "../kernel/Graphic/gui/wallpaper_loader/png.h"
 #include <stddef.h>
 
 
@@ -31,6 +32,11 @@ static char current_path[256] = "/";
 
 extern volatile uint64_t pit_ticks;
 static ring_buffer_t rb;
+
+extern uint8_t _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_start[];
+extern uint8_t _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_end[];
+
+
 
 void input_push(char c) {
     if ((rb.head + 1) % 256 == rb.tail)
@@ -127,6 +133,13 @@ void shell_run(Canvas *cv) {
     vaultfs_init(&vaultfs);
     vaultfs_create_profile(&vaultfs, 1, "default");
 
+    uint64_t png_size = _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_end 
+        - _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_start;
+
+    vaultfs_write(&vaultfs, 1, "wallpaper.png",
+        _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_start,
+        png_size);
+
     char buf[256];
 
     print_motd();
@@ -161,7 +174,16 @@ void shell_run(Canvas *cv) {
 
         // test gui
         else if (strcmp(buf, "testgui") == 0) {
-            default_profile_init(*cv);
+            uint64_t size;
+            uint8_t *raw = vaultfs_read(&vaultfs, current_profile_id, "wallpaper.png", &size);
+            if (raw == NULL) {
+                tty_set_color(COL_ERROR);
+                puts("wallpaper not found");
+            } else {
+                PngContext ctx = png_decode(raw, size);
+                // passe ctx à default_profile_init
+                default_profile_init(*cv, ctx);
+            }
         }
 
         // VaultFs

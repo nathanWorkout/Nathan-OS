@@ -24,6 +24,7 @@
 #include "kernel_panic.h"
 #include "VaultFs/vault_global.h"
 #include "limine_request.h"
+#include "../kernel/Graphic/gui/wallpaper_loader/png.h"
 #include "../kernel/drivers/mouse/mouse.h"
 #include <stddef.h>
 
