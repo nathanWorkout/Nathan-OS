@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "com1.h"
 
-static tss_t tss;
+__attribute__((section(".tss"))) static tss_t tss;
 
 void tss_init() {
     tss.rsp0 = (uint64_t)(exc_stack + 8192);

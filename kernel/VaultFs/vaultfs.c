@@ -2,13 +2,20 @@
 #include "memory/pmm.h"
 #include "vaultfs.h"
 #include "string.h"
+#include "com1.h"
 #include "../kernel/Graphic/gui/wallpaper_loader/png.h"
 
 void vaultfs_init(VaultFs *fs) {
+    serial_print("avant memset");
     memset(fs, 0, sizeof(VaultFs));
     fs->next_inode = 1;
 
     uint64_t phys = pmm_alloc_page();
+    serial_print("[VAULTFS] phys = ");
+    serial_print_hex(phys);
+    serial_print(" virt = ");
+    serial_print_hex(phys_to_virt(phys));
+    serial_print("\n");
     VaultNode *root = (VaultNode *)phys_to_virt(phys);
     memset(root, 0, sizeof(VaultNode));
 

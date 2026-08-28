@@ -156,12 +156,12 @@ void enable_wp(void) {
 }
 
 void vmm_apply_nx(address_space_t *space) {
-    // Passe 1 : remapper tout le kernel en RW d'abord
+    // 1 : remapper tout le kernel en RW d'abord
     for (uint64_t a = (uint64_t)&_text_start; a < (uint64_t)&_bss_end; a += PAGE_SIZE)
         vmm_map(space, a, kernel_virt_to_phys(a), PAGE_PRESENT | PAGE_RW);
 
-    // Passe 2 : appliquer les permissions spécifiques
-    // .text : exécutable, pas d'écriture, pas de NX
+    // 2 : appliquer les permissions spécifiques
+    // .text : exécutable, pas d'écriture ni NX
     for (uint64_t a = (uint64_t)&_text_start; a < (uint64_t)&_text_end; a += PAGE_SIZE)
         vmm_map(space, a, kernel_virt_to_phys(a), PAGE_PRESENT);
 

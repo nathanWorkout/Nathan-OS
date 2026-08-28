@@ -10,6 +10,7 @@
 #include "VaultFs/vaultfs.h"
 #include "memory/paging.h"
 #include "memory/pmm.h"
+#include "VaultFs/vault_global.h"
 #include "../Graphic/gui/default_profile.h"
 #include "../kernel/Graphic/gui/wallpaper_loader/png.h"
 #include <stddef.h>
@@ -23,10 +24,9 @@
 #define COL_PROMPT2  rgba( 99,  99, 102, 255)
 #define COL_INPUT    rgba(229, 229, 234, 255)
 #define COL_OUTPUT   rgba(142, 142, 147, 255)
-#define COL_SAY      rgba(255, 214,  10, 255)
+#define COL_SAY      rgba(255, 214,  10, 255) 
 #define COL_ERROR    rgba(255,  69,  58, 255)
 
-static VaultFs vaultfs;
 static uint64_t current_profile_id = 1;
 static char current_path[256] = "/";
 
@@ -130,13 +130,13 @@ void print_motd() {
 }
 
 void shell_run(Canvas *cv) {
-    vaultfs_init(&vaultfs);
-    vaultfs_create_profile(&vaultfs, 1, "default");
+
+    vaultfs_create_profile(&g_vaultfs, 1, "default");
 
     uint64_t png_size = _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_end 
         - _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_start;
 
-    vaultfs_write(&vaultfs, 1, "wallpaper.png",
+    vaultfs_write(&g_vaultfs, 1, "wallpaper.png",
         _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_start,
         png_size);
 
@@ -149,7 +149,7 @@ void shell_run(Canvas *cv) {
         printk("vault-os");
         tty_set_color(COL_PROMPT2);
         char cwd_display[256];
-        vaultfs_get_cwd_path(&vaultfs, current_profile_id, cwd_display, 256);
+        vaultfs_get_cwd_path(&g_vaultfs, current_profile_id, cwd_display, 256);
         printk(" %s ", cwd_display);
         tty_set_color(COL_PROMPT);
         printk("%% ");
@@ -158,96 +158,107 @@ void shell_run(Canvas *cv) {
 
         if (strcmp(buf, "help") == 0) {
             tty_set_color(COL_OUTPUT);
-            puts("clear | say | reboot | kernelpanic | ls | cat | write | rm | mkdir | publish | profile | list profile | create profile | switch profile");
+            puts("  clear                      clear the screen");
+            puts("  say <text>                 print text to screen");
+            puts("  reboot                     reboot the system");
+            puts("  kernelpanic                trigger a kernel panic");
+            puts("  ls                         list files in current directory");
+            puts("  cat <file>                 print file content");
+            puts("  write <file> <content>     write content to file");
+            puts("  rm <file>                  delete a file");
+            puts("  mkdir <dir>                create a directory");
+            puts("  cd <path>                  change directory");
+            puts("  publish <file>             publish file to shared layer");
+            puts("  depublish <file>           move file back to private layer");
+            puts("  list profile               list all profiles");
+            puts("  create profile <name>      create a new profile");
+            puts("  switch profile <name>      switch to another profile");
+            puts("  destroy profile <name>     destroy a profile and its files");
             tty_set_color(COL_INPUT);
         }
+
         else if (strcmp(buf, "clear") == 0)
             tty_clear();
+
         else if (strcmp(buf, "reboot") == 0)
             tty_reboot();
+
         else if (strncmp(buf, "say ", 4) == 0) {
             tty_set_color(COL_SAY);
             puts(buf + 4);
             tty_set_color(COL_INPUT);
         }
-        else if (strcmp(buf, "kernelpanic") == 0) kernel_panic_init(cv, NULL);
 
-        // test gui
+        else if (strcmp(buf, "kernelpanic") == 0)
+            kernel_panic_init(cv, NULL);
+
         else if (strcmp(buf, "testgui") == 0) {
             uint64_t size;
-            uint8_t *raw = vaultfs_read(&vaultfs, current_profile_id, "wallpaper.png", &size);
+            uint8_t *raw = vaultfs_read(&g_vaultfs, current_profile_id, "wallpaper.png", &size);
             if (raw == NULL) {
                 tty_set_color(COL_ERROR);
-                puts("wallpaper not found");
+                puts("error: wallpaper.png not found in filesystem");
             } else {
                 PngContext ctx = png_decode(raw, size);
-                // passe ctx à default_profile_init
                 default_profile_init(*cv, ctx);
             }
         }
 
-        // VaultFs
-        else if(strcmp(buf, "ls") == 0) {
+        else if (strcmp(buf, "ls") == 0) {
             tty_set_color(COL_OUTPUT);
 
             VaultProfile *p = NULL;
-            for(uint8_t i = 0; i < vaultfs.profile_count; i++) {
-                if(vaultfs.profiles[i].profile_id == current_profile_id) {
-                    p = &vaultfs.profiles[i];
+            for (uint8_t i = 0; i < g_vaultfs.profile_count; i++) {
+                if (g_vaultfs.profiles[i].profile_id == current_profile_id) {
+                    p = &g_vaultfs.profiles[i];
                     break;
                 }
             }
 
-            if(p == NULL) {
+            if (p == NULL) {
                 tty_set_color(COL_ERROR);
-                puts("no active profile");
+                puts("error: no active profile found");
             } else {
                 uint64_t cwd = p->cwd_inode;
 
                 VaultNode *n = p->layer2.head;
-                while(n) {
-                    if(n->parent_inode == cwd && n->type != VAULT_DELETED)
+                while (n) {
+                    if (n->parent_inode == cwd && n->type != VAULT_DELETED)
                         puts(n->name);
                     n = n->next;
                 }
 
-                n = vaultfs.layer1.head;
-                while(n) {
-                    if(n->parent_inode == cwd) {
+                n = g_vaultfs.layer1.head;
+                while (n) {
+                    if (n->parent_inode == cwd) {
                         int masked = 0;
                         VaultNode *m = p->layer2.head;
-                        while(m) {
-                            if(strcmp(m->name, n->name) == 0) { masked = 1; break; }
+                        while (m) {
+                            if (strcmp(m->name, n->name) == 0) { masked = 1; break; }
                             m = m->next;
                         }
-                        if(!masked) puts(n->name);
+                        if (!masked) puts(n->name);
                     }
                     n = n->next;
                 }
 
-                n = vaultfs.layer0.head;
-                while(n) {
-                    if(n->parent_inode == cwd) {
+                n = g_vaultfs.layer0.head;
+                while (n) {
+                    if (n->parent_inode == cwd) {
                         int masked = 0;
                         VaultNode *m = p->layer2.head;
-                        while(m) {
-                            if(strcmp(m->name, n->name) == 0) { 
-                                masked = 1; 
-                                break;
-                            }
+                        while (m) {
+                            if (strcmp(m->name, n->name) == 0) { masked = 1; break; }
                             m = m->next;
                         }
-                        if(!masked) {
-                            m = vaultfs.layer1.head;
-                            while(m) {
-                                if(strcmp(m->name, n->name) == 0) {
-                                    masked = 1; 
-                                    break; 
-                                }
+                        if (!masked) {
+                            m = g_vaultfs.layer1.head;
+                            while (m) {
+                                if (strcmp(m->name, n->name) == 0) { masked = 1; break; }
                                 m = m->next;
                             }
                         }
-                        if(!masked) puts(n->name);
+                        if (!masked) puts(n->name);
                     }
                     n = n->next;
                 }
@@ -255,53 +266,50 @@ void shell_run(Canvas *cv) {
             tty_set_color(COL_INPUT);
         }
 
-        else if(strncmp(buf, "write ", 6) == 0) {
+        else if (strncmp(buf, "write ", 6) == 0) {
             char *args = buf + 6;
             char *space = args;
-            while(*space && *space != ' ') space++;
-            if(*space == '\0') {
+            while (*space && *space != ' ') space++;
+            if (*space == '\0') {
                 tty_set_color(COL_ERROR);
                 puts("usage: write <name> <content>");
+                puts("error: missing argument, expected filename and content");
             } else {
                 *space = '\0';
                 char *name = args;
                 char *content = space + 1;
-                int ret = vaultfs_write(&vaultfs, current_profile_id, name, (uint8_t *)content, strlen(content) + 1);
-                if (ret == 0) {
-                    tty_set_color(COL_OUTPUT);
-                } else {
+                int ret = vaultfs_write(&g_vaultfs, current_profile_id, name, (uint8_t *)content, strlen(content) + 1);
+                if (ret != 0) {
                     tty_set_color(COL_ERROR);
-                    puts("error");
+                    puts("error: cannot write file (read-only or out of memory)");
                 }
             }
             tty_set_color(COL_INPUT);
         }
 
-        else if(strncmp(buf, "cat ", 4) == 0) {
+        else if (strncmp(buf, "cat ", 4) == 0) {
             char *path = buf + 4;
             uint64_t size = 0;
-
-            uint8_t *data = vaultfs_read(&vaultfs, current_profile_id, path, &size);
-
-            if(data == NULL) {
+            uint8_t *data = vaultfs_read(&g_vaultfs, current_profile_id, path, &size);
+            if (data == NULL) {
                 tty_set_color(COL_ERROR);
-                puts("file not found");
+                printk("error: '%s' not found\n", path);
             } else {
                 tty_set_color(COL_OUTPUT);
-                for(uint64_t i = 0; i < size; i++) {
-                    if(data[i] != '\0') putchar(data[i]);
+                for (uint64_t i = 0; i < size; i++) {
+                    if (data[i] != '\0') putchar(data[i]);
                 }
                 putchar('\n');
             }
             tty_set_color(COL_INPUT);
         }
 
-        else if(strncmp(buf, "cd ", 3) == 0) {
+        else if (strncmp(buf, "cd ", 3) == 0) {
             char *path = buf + 3;
-            int ret = vaultfs_cd(&vaultfs, current_profile_id, path);
-            if(ret != 0) {
+            int ret = vaultfs_cd(&g_vaultfs, current_profile_id, path);
+            if (ret != 0) {
                 tty_set_color(COL_ERROR);
-                puts("dossier introuvable");
+                printk("error: directory '%s' not found\n", path);
             } else {
                 memcpy(current_path, path, 255);
                 current_path[255] = '\0';
@@ -309,85 +317,128 @@ void shell_run(Canvas *cv) {
             tty_set_color(COL_INPUT);
         }
 
-        else if(strncmp(buf, "rm ", 3) == 0) {
+        else if (strncmp(buf, "rm ", 3) == 0) {
             char *path = buf + 3;
-            int ret = vaultfs_delete(&vaultfs, current_profile_id, path);
-            if(ret == 0) {
-                tty_set_color(COL_OUTPUT);
-            } else {
+            int ret = vaultfs_delete(&g_vaultfs, current_profile_id, path);
+            if (ret != 0) {
                 tty_set_color(COL_ERROR);
-                puts("error");
+                printk("error: cannot delete '%s' (not found or read-only)\n", path);
             }
             tty_set_color(COL_INPUT);
         }
 
-        else if(strncmp(buf, "mkdir ", 6) == 0) {
+        else if (strncmp(buf, "mkdir ", 6) == 0) {
             char *path = buf + 6;
-            int ret = vaultfs_mkdir(&vaultfs, current_profile_id, path);
-            if(ret == 0) {
-                tty_set_color(COL_OUTPUT);
-            } else {
+            int ret = vaultfs_mkdir(&g_vaultfs, current_profile_id, path);
+            if (ret != 0) {
                 tty_set_color(COL_ERROR);
-                puts("error or existing folder");
+                printk("error: cannot create directory '%s' (already exists or out of memory)\n", path);
             }
             tty_set_color(COL_INPUT);
         }
 
-        else if(strncmp(buf, "publish ", 8) == 0) {
+        else if (strncmp(buf, "publish ", 8) == 0) {
             char *path = buf + 8;
-            int ret = vaultfs_publish(&vaultfs, current_profile_id, path);
-            if(ret == 0) {
-                tty_set_color(COL_OUTPUT);
-            } else {
+            int ret = vaultfs_publish(&g_vaultfs, current_profile_id, path);
+            if (ret != 0) {
                 tty_set_color(COL_ERROR);
-                puts("erreur");
+                printk("error: cannot publish '%s' (not found in private layer or already deleted)\n", path);
             }
             tty_set_color(COL_INPUT);
         }
 
-        else if(strcmp(buf, "list profile") == 0) {
+        else if (strncmp(buf, "depublish ", 10) == 0) {
+            char *path = buf + 10;
+            int ret = vaultfs_depublish(&g_vaultfs, current_profile_id, path);
+            if (ret != 0) {
+                tty_set_color(COL_ERROR);
+                printk("error: cannot depublish '%s' (not found in shared layer or not owner)\n", path);
+            }
+            tty_set_color(COL_INPUT);
+        }
+
+        else if (strcmp(buf, "list profile") == 0) {
             tty_set_color(COL_OUTPUT);
-            for(uint8_t i = 0; i < vaultfs.profile_count; i++) {
-                 if(vaultfs.profiles[i].profile_id == current_profile_id)
-                    printk("> %s\n", vaultfs.profiles[i].name);
-                 else printk("  %s\n", vaultfs.profiles[i].name);
+            if (g_vaultfs.profile_count == 0) {
+                tty_set_color(COL_ERROR);
+                puts("error: no profiles exist");
+            } else {
+                for (uint8_t i = 0; i < g_vaultfs.profile_count; i++) {
+                    if (g_vaultfs.profiles[i].profile_id == current_profile_id)
+                        printk("> %s (active)\n", g_vaultfs.profiles[i].name);
+                    else
+                        printk("  %s\n", g_vaultfs.profiles[i].name);
+                }
             }
             tty_set_color(COL_INPUT);
         }
 
         else if (strncmp(buf, "create profile ", 15) == 0) {
             char *name = buf + 15;
-            static uint64_t next_id = 2;
-            int ret = vaultfs_create_profile(&vaultfs, next_id++, name);
-            if (ret == 0) {
-                tty_set_color(COL_OUTPUT);
-
-            } else {
+            if (name[0] == '\0') {
                 tty_set_color(COL_ERROR);
-                puts("erreur ou limite atteinte");
+                puts("usage: create profile <name>");
+                puts("error: missing profile name");
+            } else {
+                static uint64_t next_id = 2;
+                int ret = vaultfs_create_profile(&g_vaultfs, next_id++, name);
+                if (ret != 0) {
+                    tty_set_color(COL_ERROR);
+                    puts("error: cannot create profile (limit of 16 profiles reached)");
+                } else {
+                    tty_set_color(COL_OUTPUT);
+                    printk("profile '%s' created\n", name);
+                }
             }
             tty_set_color(COL_INPUT);
         }
 
-        else if(strncmp(buf, "switch profile ", 15) == 0) {
+        else if (strncmp(buf, "switch profile ", 15) == 0) {
             char *name = buf + 15;
-            VaultProfile *p = vaultfs_find_profile_by_name(&vaultfs, name);
-            if(p == NULL) {
+            VaultProfile *p = vaultfs_find_profile_by_name(&g_vaultfs, name);
+            if (p == NULL) {
                 tty_set_color(COL_ERROR);
-                puts("profil introuvable");
+                printk("error: profile '%s' not found\n", name);
             } else {
                 current_profile_id = p->profile_id;
                 tty_set_color(COL_OUTPUT);
-                printk("profil actif : %s\n", p->name);
+                printk("switched to profile '%s'\n", p->name);
+            }
+            tty_set_color(COL_INPUT);
+        }
+
+        else if (strncmp(buf, "destroy profile ", 16) == 0) {
+            char *name = buf + 16;
+            if (name[0] == '\0') {
+                tty_set_color(COL_ERROR);
+                puts("usage: destroy profile <name>");
+                puts("error: missing profile name");
+            } else {
+                VaultProfile *p = vaultfs_find_profile_by_name(&g_vaultfs, name);
+                if (p == NULL) {
+                    tty_set_color(COL_ERROR);
+                    printk("error: profile '%s' not found\n", name);
+                } else if (p->profile_id == current_profile_id) {
+                    tty_set_color(COL_ERROR);
+                    puts("error: cannot destroy the currently active profile");
+                } else {
+                    int ret = vault_destroy_profile(&g_vaultfs, p->profile_id);
+                    if (ret != 0) {
+                        tty_set_color(COL_ERROR);
+                        puts("error: failed to destroy profile");
+                    } else {
+                        tty_set_color(COL_OUTPUT);
+                        printk("profile '%s' destroyed\n", name);
+                    }
+                }
             }
             tty_set_color(COL_INPUT);
         }
 
         else if (strcmp(buf, "") != 0) {
             tty_set_color(COL_ERROR);
-            printk("unknown command : %s\n", buf);
+            printk("unknown command: '%s' : type 'help' for available commands\n", buf);
             tty_set_color(COL_INPUT);
         }
-
     }
 }

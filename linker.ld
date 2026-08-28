@@ -25,7 +25,7 @@ SECTIONS
     . = ALIGN(4096);
     _rodata_end = .;
 
-    _data_start = .;
+        _data_start = .;
     .data ALIGN(4096) :
     {
         *(.data)
@@ -33,6 +33,12 @@ SECTIONS
     }
     . = ALIGN(4096);
     _data_end = .;
+
+    .tss ALIGN(4096) :
+    {
+        *(.tss)
+        . = ALIGN(4096);
+    }
 
     _bss_start = .;
     .bss ALIGN(4096) :

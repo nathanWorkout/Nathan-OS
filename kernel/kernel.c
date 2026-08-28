@@ -40,8 +40,8 @@ void kmain(void) {
     pmm_init(memmap_request.response);
     address_space_t *kernel_space = vmm_create_kernel_space();
     if (!kernel_space) {
-        serial_print("[KERNEL] Failed to create kernel space\n");
-        for (;;);
+    serial_print("[KERNEL] Failed to create kernel space\n");
+    for (;;);
     }
     pmm_init_full(memmap_request.response, kernel_space);
     vmm_apply_nx(kernel_space);
@@ -58,10 +58,10 @@ void kmain(void) {
     vmm_set_readonly(kernel_space, tss_get_addr(), tss_get_size());
 
     #if 0
-    serial_print("[TEST] Tentative d'ecriture sur IDT ...\n");
-    volatile uint8_t *test = (volatile uint8_t *)idt;
-    *test = 0xFF;
-    serial_print("[TEST] ERREUR: l'ecriture a reussi, RO ne fonctionne pas !\n");
+        serial_print("[TEST] Tentative d'ecriture sur IDT ...\n");
+        volatile uint8_t *test = (volatile uint8_t *)idt;
+        *test = 0xFF;
+        serial_print("[TEST] ERREUR: l'ecriture a reussi, RO ne fonctionne pas !\n");
     #endif
 
     gfx_init(&screen);
@@ -70,11 +70,12 @@ void kmain(void) {
     pic_clear_mask(0);
     pic_clear_mask(1);
     Canvas cv = fb_get_canvas();
+    vaultfs_init(&g_vaultfs);
+    //vmm_set_readonly(kernel_space, (uint64_t)&g_vaultfs.layer1, sizeof(VaultIndex));
+    //mouse_init();
+    //pic_clear_mask(12);
     shell_run(&cv);
-    vault_global_init();
-    mouse_init();
-    pic_clear_mask(12);
     while (1) {
-        __asm__("hlt");
+    __asm__("hlt");
     }
 }
