@@ -186,14 +186,18 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
          // Parsing de l'header DFLATE
         uint32_t output_pos = 0;
 
-        int BFINAL = read_bits(&bit_reader, 1);
-        int BTYPE  = read_bits(&bit_reader, 2); // type de compression
+        uint32_t BFINAL;
+        uint32_t BTYPE;
 
         do {
+            int BFINAL = read_bits(&bit_reader, 1);
+            int BTYPE  = read_bits(&bit_reader, 2); // type de compression
             switch (BTYPE) {
                 case 0:
                     bit_reader.bits = 0;
                     bit_reader.bit_count = 0;
+
+                    if (bit_reader.pos + 4 > bit_reader.size) return context;
 
                     // masque les bit restant et commence au prochain octet
                     // LEN
@@ -257,7 +261,8 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                     HuffmanTable table = {0};
                     for (int i = 0; i < 288; i++) {
                         if (lengths[i] != 0) {
-                            table.codes[i]   = next_code[lengths[i]]++;
+                            uint16_t next_codeF = next_code[lengths[i]]++;
+                            table.codes[i] = reverse_bits(next_codeF, lengths[i]);
                             table.lengths[i] = lengths[i];
                         }
                     }
@@ -300,12 +305,17 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
 
                    while (done != 1) {
                        int next_bit = read_bits(&bit_reader, 1);
+
+                       if (next_bit < 0) return context;
+
                        huff_code = (huff_code << 1) | next_bit;
                        nbits++;
 
                        for (int i = 0; i < 288; i++) {
                             if (table.lengths[i] == nbits && table.codes[i] == huff_code) {
                                 if (i >= 0 && i <= 255) { //octet a ecrire
+                                    if (output_pos >= pixels_size) return context;
+
                                     context.pixels[output_pos] = i;
                                     output_pos++;
                                 }
@@ -313,9 +323,13 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                                     done = 1;
                                 }
                                 else if (i >= 257 && i <= 285) { // back reference
-                                    int length = length_base[i - 257] + read_bits(&bit_reader, length_extra[i - 257]); 
+                                    int length = length_base[i - 257] + 
+                                        read_bits(&bit_reader, length_extra[i - 257]); 
                                     int code_dist = read_bits(&bit_reader, 5);
-                                    int distance = distance_base[code_dist] + read_bits(&bit_reader, distance_extra[code_dist]);
+                                    code_dist = reverse_bits(code_dist, 5);
+
+                                    int distance = distance_base[code_dist] +
+                                        read_bits(&bit_reader, distance_extra[code_dist]);
 
                                     for (int j = 0; j < length; j++) {
                                         if (output_pos >= pixels_size) return context;
@@ -368,7 +382,8 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                     HuffmanTable cl_table = {0};
                     for (int i = 0; i < 19; i++) {
                         if (code_lengths[i] != 0) {
-                            cl_table.codes[i]   = next_code[code_lengths[i]]++;
+                            uint16_t next_codeF = next_code[code_lengths[i]]++;
+                            cl_table.codes[i] = reverse_bits(next_codeF, code_lengths[i]);
                             cl_table.lengths[i] = code_lengths[i];
                         }
                     }
@@ -390,7 +405,9 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                                     all_lengths[index] = i;
                                     index++;
                                 }
+                                
                                 else if (i == 16) { 
+                                    if (index == 0) return context;
                                     int repeat = read_bits(&bit_reader, 2) + 3; // spec si on repete moins de 3 fois ca sert a rien autant les ecrire en brut ca economise des bits
                                     for (int j = 0; j < repeat; j++) {
                                         all_lengths[index] = all_lengths[index - 1];
@@ -412,6 +429,8 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                                         index++;
                                     }
                                 }
+                                huff_code = 0;
+                                nbits = 0;
                             }
                         }  
                     }
@@ -431,7 +450,8 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                     HuffmanTable lit_table = {0};
                     for (int i = 0; i < HLIT; i++) {
                         if (all_lengths[i] != 0) {
-                            lit_table.codes[i]   = next_code2[all_lengths[i]]++;
+                            uint16_t next_codeF = next_code2[all_lengths[i]]++;
+                            lit_table.codes[i] = reverse_bits(next_codeF, all_lengths[i]);
                             lit_table.lengths[i] = all_lengths[i];
                         }
                     }
@@ -452,7 +472,8 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                     HuffmanTable dist_table = {0};
                     for (int i = 0; i < HDIST; i++) {
                         if (all_lengths[HLIT + i] != 0) { // pour lire les distances sinon on lit les litteraux
-                            dist_table.codes[i]   = next_code3[all_lengths[i]]++;
+                            uint16_t next_codeF = next_code3[all_lengths[HLIT + i]]++;
+                            dist_table.codes[i] = reverse_bits(next_codeF, all_lengths[HLIT + i]);
                             dist_table.lengths[i] = all_lengths[HLIT + i];
                         }
                     }
@@ -496,6 +517,8 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                        for (int i = 0; i < 288; i++) {
                             if (lit_table.lengths[i] == nbits && lit_table.codes[i] == huff_code) {
                                 if (i >= 0 && i <= 255) {
+                                    if (output_pos >= pixels_size) return context;
+
                                     context.pixels[output_pos] = i;
                                     output_pos++;
                                 }
@@ -510,8 +533,8 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                                     int code_dist = 0;
 
                                     // on cherche tant que c'est pas un symbole, pour cela il faut que dist_huff et dist_nbits matchent
-                                    while (1) {
-                                        dist_huff = (dist_huff << 1) | read_bits(&bit_reader, 1); 
+                                    while (dist_nbits < 15) {
+                                        dist_huff = (dist_huff << 1) | read_bits(&bit_reader, 1);
                                         dist_nbits++;
                                         for (int d = 0; d < HDIST; d++) {
                                             if (dist_table.lengths[d] == dist_nbits && dist_table.codes[d] == dist_huff) {
@@ -520,6 +543,7 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                                             }
                                         }
                                     }
+                                    return context;
                                     found_dist:;
 
                                     int distance = distance_base[code_dist] + read_bits(&bit_reader, distance_extra[code_dist]);
