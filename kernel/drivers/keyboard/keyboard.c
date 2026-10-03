@@ -1,3 +1,11 @@
+/**
+ * @file keyboard.c
+ * @brief Pilote clavier PS/2 avec disposition AZERTY
+ *
+ * Gère les scancodes du clavier PS/2 via l'IRQ1.
+ * Supporte la disposition AZERTY française avec gestion du Shift.
+ */
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "com1.h"
@@ -5,8 +13,14 @@
 #include "ring_buffer.h"
 #include "pic8089.h"
 
+/** @brief État de la touche Shift (gauche ou droite) */
 static bool shift;
 
+/**
+ * @brief Table de conversion scancode -> caractère AZERTY (sans Shift)
+ *
+ * Indexée par le scancode PS/2 set 1. Les entrées non définies valent 0.
+ */
 static char scancode_table[128] = {
     [0x01] = 27,   // ESC
     [0x02] = '&',
@@ -70,6 +84,9 @@ static char scancode_table[128] = {
     [0x53] = '.',
 };
 
+/**
+ * @brief Table de conversion scancode -> caractère AZERTY (avec Shift)
+ */
 static char scancode_table_shift[128] = {
     [0x01] = 27,   // ESC
     [0x02] = '1',
@@ -133,20 +150,36 @@ static char scancode_table_shift[128] = {
     [0x53] = '.',
 };
 
+/**
+ * @brief Handler de l'IRQ1 — clavier PS/2
+ *
+ * Appelé à chaque frappe ou relâchement de touche.
+ * Lit le scancode depuis le port 0x60, gère l'état Shift,
+ * et pousse le caractère ASCII dans le ring buffer d'entrée.
+ *
+ * @param regs Registres CPU sauvegardés par l'ISR (non utilisés ici)
+ *
+ * @note Un scancode avec le bit 7 à 1 indique un relâchement (key up).
+ * @warning Le else if sur 0xAA/0xB6 dans le bloc key-down est mort
+ *          (ces scancodes sont déjà capturés par le test bit 7).
+ */
 void irq1_handler(uint64_t *regs) {
     (void)regs;
-    uint8_t scancode = inb(0x60);
+    uint8_t scancode = inb(0x60); /* Port données PS/2 */
 
-    if (scancode & 0x80) {
-        if (scancode == 0xAA || scancode == 0xB6) shift = 0;
-    } else {
-        if (scancode == 0x2A || scancode == 0x36) shift = 1;
-        else if (scancode == 0xAA || scancode == 0xB6) shift = 0;
+    if (scancode & 0x80) { /* Key up : bit 7 à 1 */
+        if (scancode == 0xAA || scancode == 0xB6) /* Shift G / Shift D relâché */
+            shift = 0;
+    } else { /* Key down */
+        if (scancode == 0x2A || scancode == 0x36) /* Shift G / Shift D pressé */
+            shift = 1;
+        else if (scancode == 0xAA || scancode == 0xB6) /* Dead code */
+            shift = 0;
         else {
             char c = shift ? scancode_table_shift[scancode] : scancode_table[scancode];
-            if (c) input_push(c);
+            if (c) input_push(c); /* Pousse dans le ring buffer si touche connue */
         }
     }
 
-    pic_send_eoi(1);
+    pic_send_eoi(1); /* EOI obligatoire pour autoriser le PIC à envoyer une nouvelle interruption*/
 }

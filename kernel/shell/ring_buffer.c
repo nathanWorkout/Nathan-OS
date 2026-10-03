@@ -200,6 +200,15 @@ void shell_run(Canvas *cv) {
                 puts("error: wallpaper.png not found in filesystem");
             } else {
                 PngContext ctx = png_decode(raw, size);
+                serial_println("color_type : ");
+                serial_print_hex(ctx.color_type);
+                serial_println("\n");
+                serial_println("width : ");
+                serial_print_hex(ctx.width);
+                serial_println("\n");
+                serial_println("height : ");
+                serial_print_hex(ctx.height);
+                serial_println("\n");
                 default_profile_init(*cv, ctx);
             }
         }

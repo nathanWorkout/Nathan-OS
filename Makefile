@@ -150,7 +150,7 @@ usb: $(IMG)
 
 run: $(IMG)
 	qemu-system-x86_64 \
-	    -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/OvmfX64/OVMF_CODE.fd \
+	    -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd \
 	    -drive if=pflash,format=raw,file=OVMF_VARS.fd \
 	    -drive format=raw,file=$(IMG),index=0,media=disk \
 	    -serial stdio \

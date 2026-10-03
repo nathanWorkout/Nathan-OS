@@ -109,19 +109,19 @@ VaultOs adopte une architecture inspirée des noyaux monolithiques (Windows NT),
 
 ## VaultFs
 
-VaultFs est le système de fichiers conçu spécifiquement pour VaultOs. Aucun filesystem existant ne proposant d'isolation native par profil, il a été inventé from scratch pour incarner le principe central de l'OS.
+VaultFs est le système de fichiers conçu spécifiquement pour VaultOs. Aucun filesystem existant ne proposant d'isolation native par profil, il a été inventé de 0 pour incarner le principe central de l'OS.
 
 ### Modèle 3 couches
 
 ```
-Layer 0 (Core)     ← Lecture seule, partagé entre tous les profils
-Layer 1 (Shared)   ← Fichiers publiés par les profils, visibles de tous
-Layer 2 (Private)  ← Espace privé par profil, modifiable librement
+Layer 0 (Core)     ←  Lecture seule, partagé entre tous les profils
+Layer 1 (Shared)   ←  Fichiers publiés par les profils, visibles de tous
+Layer 2 (Private)  ←  Espace privé par profil, modifiable librement
 ```
 
 La résolution d'un chemin cherche d'abord dans le Layer 2 du profil courant, puis Layer 1, puis Layer 0. Un nœud marqué `VAULT_DELETED` dans le Layer 2 masque les couches inférieures (copy-on-write : le fichier d'origine n'est jamais touché).
 
-Chaque profil possède son propre espace de fichiers. Pour rendre un fichier visible aux autres profils, il faut explicitement le **publier** vers la couche partagée. Si un autre profil modifie ce fichier, une copie privée est créée automatiquement — le fichier source reste intact. Seul le profil qui a créé un fichier peut le supprimer.
+Chaque profil possède son propre espace de fichiers. Pour rendre un fichier visible aux autres profils, il faut explicitement le **publier** vers la couche partagée. Si un autre profil modifie ce fichier, une copie privée est créée automatiquement, le fichier source reste intact. Seul le profil qui a créé un fichier peut le supprimer.
 
 Concrètement : deux profils peuvent avoir des dotfiles complètement différents pour le même programme. C'est la différence fondamentale avec Linux.
 
@@ -129,13 +129,11 @@ Concrètement : deux profils peuvent avoir des dotfiles complètement différent
 
 VaultFs offre une résistance structurelle aux logiciels malveillants :
 
-- **Un virus infiltré dans un profil** ne trouve que des fichiers temporaires et volatiles — les données importantes sont dans la couche partagée, hors de sa portée directe.
-- **Le seul vecteur d'attaque réel** est une écriture massive vers la couche partagée, le seul moment où les protections hardware sont relâchées.
-- **Contre-mesure prévue** : un moniteur de taux d'écriture intégré au kernel, capable de détecter et bloquer ce comportement anormal en temps réel.
+- **Un virus infiltré dans un profil** ne trouve que des fichiers temporaires et volatiles, les données importantes sont dans la couche partagée, hors de sa portée directe, autrement dit hors de sa vue.
 
 ### Faille
 
-Comme tout système d'exploitation, VaultOs n'est pas exempt de failles kernel. L'élévation de privilèges ou une corruption mémoire restent des vecteurs d'attaque théoriques — le modèle de sécurité de VaultFs réduit énormément la surface d'exposition, mais ne remplace pas la robustesse du noyau lui-même. Cepandant, je vous souhaite bon courage pour trouver une faille dans un noyau.
+Comme tout système d'exploitation, VaultOs n'est pas exempt de failles kernel. L'élévation de privilèges ou une corruption mémoire restent des vecteurs d'attaque théoriquesm, le modèle de sécurité de VaultFs réduit énormément la surface d'exposition, mais ne remplace pas la robustesse du noyau lui-même. Cepandant, je vous souhaite bon courage pour trouver une faille dans un noyau.
 
 ---
 
@@ -220,7 +218,7 @@ Nathan-OS/
 
 ### Ce qui est prévu
 
-**Interface graphique — 3 modes**
+**Interface graphique, 3 modes**
 
 - **Mode Windows-like** : un bureau clé en main avec beaucoup d'options de personnalisation, pour ceux qui veulent quelque chose de fonctionnel sans configuration.
 - **Mode tiling** : inspiré de Hyprland, Niri ou i3. Tu pars d'une interface vide et tu construis ton environnement via des scripts — la philosophie des WM Linux. Des presets seront proposés.

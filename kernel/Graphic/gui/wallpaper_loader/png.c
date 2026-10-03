@@ -4,6 +4,7 @@
 #include "../memory/kmalloc.h"
 #include "png.h"
 #include "tty.h"
+#include "com1.h"
 
 /* c'est stocké comme ça
     +------------+----------+--------------+----------+
@@ -31,7 +32,8 @@ uint32_t reverse_bits(int value, int nbits) {
 
 int read_bits(BitReader *bit_reader, int n) {
     // DEFLATE lit les bits LSB -> MSB dans chaque octet
-    if (n <= 0 || n > 32) return -1; // au cas ou
+    if (n < 0 || n > 32) return -1; // au cas ou
+    if (n == 0) return 0;
 
     while (bit_reader->bit_count < n) {
         if (bit_reader->pos >= bit_reader->size) return -1;
@@ -44,7 +46,7 @@ int read_bits(BitReader *bit_reader, int n) {
                     (uint32_t) : 00000000000000000000000011010110 (conversion 32 bits)
                     << 3       : 00000000000000000000011010110000
                     |=         : 00000000000000000000011010110101
-         */
+        */
         bit_reader->pos++;
         bit_reader->bit_count += 8;
     }
@@ -86,11 +88,11 @@ int paeth(int a, int b, int c) {
 
 PngContext png_decode(uint8_t *data, uint32_t size) {
     PngContext context = {0};
-    printk("png_decode start\n");
+    serial_println("png_decode start");
 
     if (size < 8) { printk("header is too small\n"); return context; }
-    if (memcmp(data, PNG_MAGIC_NUMBER, 8) != 0) { printk("magic number have problem\n"); return context; }
-    printk("magic is good\n");
+    if (memcmp(data, PNG_MAGIC_NUMBER, 8) != 0) { serial_println("magic number have problem"); return context; }
+    serial_println("magic is good");
 
     if (size < 8) return context;
     if (memcmp(data, PNG_MAGIC_NUMBER, 8) != 0) return context;
@@ -153,7 +155,8 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
         ptr += length;
         ptr += 4;
     }
-        printk("chunks are good w=%d h=%d idat=%d\n", context.width, context.height, context.idat_size);
+    
+    printk("chunks are good w=%d h=%d idat=%d\n", context.width, context.height, context.idat_size);
 
 
     uint32_t bytes_per_pixel;
@@ -183,17 +186,20 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
             .bit_count = 0
         };
 
-         // Parsing de l'header DFLATE
+        printk("Start parsing DEFLATE");
+
+         // Parsing de l'header DEFLATE
         uint32_t output_pos = 0;
 
-        uint32_t BFINAL;
+        int bfinal = 0;
         uint32_t BTYPE;
 
         do {
-            int BFINAL = read_bits(&bit_reader, 1);
+            int bfinal = read_bits(&bit_reader, 1);
             int BTYPE  = read_bits(&bit_reader, 2); // type de compression
             switch (BTYPE) {
                 case 0:
+                    serial_println("cas 0");
                     bit_reader.bits = 0;
                     bit_reader.bit_count = 0;
 
@@ -215,11 +221,13 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                     memcpy(context.pixels + output_pos, bit_reader.data + bit_reader.pos, len);
                     bit_reader.pos += len;
                     output_pos += len;
-                    // pas de decompression on copie len dnas pixels
+                    // pas de decompression on copie len dans pixels
+                    serial_println("bloc non compresser LEN/NLEN valider");
 
                     break; // bloc non compresser
 
                 case 1: {
+                    serial_println("cas 1");
                     // Valeures RFC 1951
                     uint8_t lengths[288];
 
@@ -258,6 +266,7 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                         next_code[bits] = code;
                     }
 
+                    serial_println("huffman table");
                     HuffmanTable table = {0};
                     for (int i = 0; i < 288; i++) {
                         if (lengths[i] != 0) {
@@ -272,12 +281,11 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                    int done = 0;
 
                    // tableaux rfc
-                   static const int length_base[]  = 
-                   { 
-                   3, 4, 5, 6, 7, 8, 10, 12, 14, 16,
-                   18, 22, 26, 30, 34, 42, 50, 58, 66, 82,
-                   98, 114, 130, 162, 194, 226, 258
-                   };
+                   static const int length_base[] = {
+                        3, 4, 5, 6, 7, 8, 9, 10, 11, 13,
+                        15, 17, 19, 23, 27, 31, 35, 43, 51, 59,
+                        67, 83, 99, 115, 131, 163, 195, 227, 258
+                    };
 
                    static const int length_extra[] = 
                    {
@@ -308,7 +316,7 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
 
                        if (next_bit < 0) return context;
 
-                       huff_code = (huff_code << 1) | next_bit;
+                       huff_code |= (next_bit << nbits);
                        nbits++;
 
                        for (int i = 0; i < 288; i++) {
@@ -351,7 +359,9 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                 }
 
                 case 2: {
+                    serial_println("cas 2");
                     // spec DEFLATE
+		       //     serial_println("avant le bit reader");
                     int HLIT  = read_bits(&bit_reader, 5) + 257; 
                     int HDIST = read_bits(&bit_reader, 5) + 1;
                     int HCLEN = read_bits(&bit_reader, 4) + 4;
@@ -367,10 +377,13 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                     for (int i = 0; i < HCLEN; i++) {
                         code_lengths[order[i]] = read_bits(&bit_reader, 3);
                     }
-                    
+                  //  serial_println("remplissage code_length avec les longueurs de la table des metacodes");
+
+                   // serial_println("construction de la table hufman imminente"); 
                     // construction de la premiere table huffman (preparation plutot pour les 2 prochaines tables)
                     uint16_t bl_count[16] = {0};
                     for (int i = 0; i < 19; i++) bl_count[code_lengths[i]]++;
+                  //  serial_println("Combi0ne de code ont chaques longeurs parmis les metacodes");
 
                     uint16_t next_code[16] = {0};
                     uint16_t code = 0;
@@ -378,6 +391,7 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                         code = (code + bl_count[bits - 1]) << 1;
                         next_code[bits] = code;
                     }
+                  //  serial_println("puis les codes");
 
                     HuffmanTable cl_table = {0};
                     for (int i = 0; i < 19; i++) {
@@ -387,6 +401,7 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                             cl_table.lengths[i] = code_lengths[i];
                         }
                     }
+                  //  serial_println("on rempli la premiere table huffman");
 
                     uint8_t all_lengths[HLIT + HDIST];
                     int index = 0;
@@ -395,45 +410,34 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
 
                     while (index < HLIT + HDIST) {
                         int next_bit = read_bits(&bit_reader, 1);
-                        huff_code = (huff_code << 1) | next_bit;
+                        if (next_bit < 0) return context;
+                        
+                        huff_code |= (next_bit << nbits);
                         nbits++;
 
-                        // va servir a construire les 2 tables huffman avec les litteraux/longueur et celle  des distances
                         for (int i = 0; i < 19; i++) {
                             if (cl_table.lengths[i] == nbits && cl_table.codes[i] == huff_code) {
-                                if (i >= 0 && i <= 15) {
-                                    all_lengths[index] = i;
-                                    index++;
-                                }
-                                
-                                else if (i == 16) { 
+                                if (i <= 15) {
+                                    all_lengths[index++] = i;
+                                } else if (i == 16) {
                                     if (index == 0) return context;
-                                    int repeat = read_bits(&bit_reader, 2) + 3; // spec si on repete moins de 3 fois ca sert a rien autant les ecrire en brut ca economise des bits
-                                    for (int j = 0; j < repeat; j++) {
-                                        all_lengths[index] = all_lengths[index - 1];
-                                        index++;
-                                    }
-                                    // on copie j fois le symbole que la compression nous indique de faire
-                                }
-                                else if (i == 17) {
-                                    int repeat = read_bits(&bit_reader, 3) + 3; 
-                                    for (int j = 0; j < repeat; j++) {
-                                        all_lengths[index] = 0;
-                                        index++;
-                                    }
-                                }
-                                else if (i == 18) {
+                                    int repeat = read_bits(&bit_reader, 2) + 3;
+                                    uint8_t last = all_lengths[index - 1];
+                                    for (int j = 0; j < repeat; j++) all_lengths[index++] = last;
+                                } else if (i == 17) {
+                                    int repeat = read_bits(&bit_reader, 3) + 3;
+                                    for (int j = 0; j < repeat; j++) all_lengths[index++] = 0;
+                                } else if (i == 18) {
                                     int repeat = read_bits(&bit_reader, 7) + 11;
-                                    for (int j = 0; j < repeat; j++) {
-                                        all_lengths[index] = 0;
-                                        index++;
-                                    }
+                                    for (int j = 0; j < repeat; j++) all_lengths[index++] = 0;
                                 }
                                 huff_code = 0;
                                 nbits = 0;
+                                break;
                             }
-                        }  
+                        }
                     }
+                    //serial_println("all_length rempli pour si le symbole se repete");
 
                     // LIT TABLE
                     uint16_t bl_count2[16] = {0};
@@ -445,7 +449,8 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                         code2 = (code2 + bl_count2[bits - 1]) << 1;
                         next_code2[bits] = code2;
                     }
-
+                    serial_println("2eme table");
+                    
                     // table qui decode les symboles 0-285 (octets litteraux + back reference)
                     HuffmanTable lit_table = {0};
                     for (int i = 0; i < HLIT; i++) {
@@ -455,6 +460,13 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                             lit_table.lengths[i] = all_lengths[i];
                         }
                     }
+
+                    serial_println("lit_table[256] : ");
+                    serial_print_hex(lit_table.codes[256]);
+                    serial_println("\n");
+                    serial_println("lit_table[256] len : ");
+                    serial_print_hex(lit_table.lengths[256]);
+                    serial_println("\n");
                                
                     // DIST TABLE
                     uint16_t bl_count3[16] = {0};
@@ -477,20 +489,22 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                             dist_table.lengths[i] = all_lengths[HLIT + i];
                         }
                     }
+                    serial_println("dist table remplie");
+                    serial_println("HDIST : ");
+                    serial_print_hex(HDIST);
+                    serial_println("\n");
 
-                    static const int length_base[]  = 
-                   { 
-                   3, 4, 5, 6, 7, 8, 10, 12, 14, 16,
-                   18, 22, 26, 30, 34, 42, 50, 58, 66, 82,
-                   98, 114, 130, 162, 194, 226, 258
-                   };
+                    static const int length_base[] = {
+                        3, 4, 5, 6, 7, 8, 9, 10, 11, 13,
+                        15, 17, 19, 23, 27, 31, 35, 43, 51, 59,
+                        67, 83, 99, 115, 131, 163, 195, 227, 258
+                    };
 
-                   static const int length_extra[] = 
-                   {
-                   0, 0, 0, 0, 0, 1, 1, 1, 1, 2,
-                   2, 2, 2, 2, 3, 3, 3, 3, 4, 4,
-                   4, 4, 5, 5, 5, 5, 0
-                   };
+                   static const int length_extra[] = {
+                        0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+                        1, 1, 2, 2, 2, 2, 3, 3, 3, 3,
+                        4, 4, 4, 4, 5, 5, 5, 5, 0
+                    };
 
                    static const int distance_base[] =
                    {
@@ -508,51 +522,101 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                    13, 13
                    };
 
+                    huff_code = 0;
+                    nbits = 0;
                     int done = 0;
                     while (done != 1) {
-                       int next_bit = read_bits(&bit_reader, 1);
-                       huff_code = (huff_code << 1) | next_bit;
-                       nbits++;
+                        int next_bit = read_bits(&bit_reader, 1);
+                        if (next_bit < 0) return context;
+                        huff_code |= (next_bit << nbits);
+                        nbits++;
 
-                       for (int i = 0; i < 288; i++) {
+                        for (int i = 0; i < 288; i++) {
                             if (lit_table.lengths[i] == nbits && lit_table.codes[i] == huff_code) {
                                 if (i >= 0 && i <= 255) {
                                     if (output_pos >= pixels_size) return context;
 
                                     context.pixels[output_pos] = i;
                                     output_pos++;
+                                    //serial_println("octets bruts remplies");
                                 }
                                 else if (i == 256) {
+                                    serial_println("fin de bloc on sort de la boucle");
                                     done = 1;
                                 }
                                 else if (i >= 257 && i <= 285) {
                                     int length = length_base[i - 257] + read_bits(&bit_reader, length_extra[i - 257]); 
-                                    
+                                   // serial_println("longueur calculee");
+
                                     int dist_huff = 0;
                                     int dist_nbits = 0;
                                     int code_dist = 0;
 
                                     // on cherche tant que c'est pas un symbole, pour cela il faut que dist_huff et dist_nbits matchent
+                                    //serial_println("symbole de distance + bits extra");
                                     while (dist_nbits < 15) {
-                                        dist_huff = (dist_huff << 1) | read_bits(&bit_reader, 1);
+                                        //serial_println("avant next_bit");
+                                        int next_bit = read_bits(&bit_reader, 1);
+                                        //serial_println("apres next_bit");
+                                        if (next_bit < 0) {
+                                            serial_println("next_bit < 0");
+                                            return context;
+                                        }
+                                        dist_huff |= (next_bit << dist_nbits);
                                         dist_nbits++;
+                                        //serial_println("avant la boucle d qui fait le jmp a found_dist");
                                         for (int d = 0; d < HDIST; d++) {
                                             if (dist_table.lengths[d] == dist_nbits && dist_table.codes[d] == dist_huff) {
                                                 code_dist = d;
+                                                //serial_println("code_dist : ");
+                                                //serial_print_hex(code_dist);
+                                                //serial_println("\n");
                                                 goto found_dist;
                                             }
                                         }
                                     }
+                                    printk("errur dist: dist_huff=%d dist_nbits=%d HDIST=%d\n", dist_huff, dist_nbits, HDIST);
+                                    for (int d = 0; d < HDIST; d++) {
+                                        if (dist_table.lengths[d] != 0)
+                                            printk("  dist_table[%d] len=%d code=%d\n", d, dist_table.lengths[d], dist_table.codes[d]);
+                                    }
                                     return context;
+
                                     found_dist:;
 
+                                    //serial_println("jmp fait");
+
                                     int distance = distance_base[code_dist] + read_bits(&bit_reader, distance_extra[code_dist]);
+                                    /*
+                                    serial_println("length : ");
+                                    serial_print_hex(length);
+                                    serial_println("\n");
+                                    serial_println("distance : ");
+                                    serial_print_hex(distance);
+                                    serial_println("\n");
+                                    serial_println("output_pos : ");
+                                    serial_print_hex(output_pos);
+                                    serial_println("\n");
+                                    serial_println("pixel size : ");
+                                    serial_print_hex(pixels_size);
+                                    serial_println("\n");
+                                    */
+                                    
 
                                     for (int j = 0; j < length; j++) {
-                                        if (output_pos == 0 || distance > output_pos) return context;
+                                        if (output_pos == 0 || distance > output_pos) {
+                                            serial_println("erreur : distance trop grande\n");
+                                            return context;
+                                        }
+                                        if (output_pos >= pixels_size) {
+                                            serial_println("erreur : overflow de pixels\n");
+                                            return context;
+                                        }
                                         context.pixels[output_pos] = context.pixels[output_pos - distance];
                                         output_pos++;
                                     }
+
+                                    //serial_println("copie des symboles");
                                 }
                                 huff_code  = 0;
                                 nbits = 0;
@@ -561,13 +625,15 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                         }    
                     }
 
+                    serial_println("FINISH");
+
                     break; // Hufman dynamique
                 }
 
 
                 case 3: return context; // invalide
             }
-        } while (!BFINAL);
+        } while (!bfinal);
 
         // Lors de la compression, l'algo applique un filtre : il augmente certain pixel ex : 100 -> 101 -> 102...
         // C'est parce que DEFLATE optimise dans ce cas. Il transforme en 1, 1, 1... et applique des opti
@@ -590,7 +656,7 @@ PngContext png_decode(uint8_t *data, uint32_t size) {
                 }
 
                 if (y > 0) {
-                    up = context.pixels[index - (context.width * bytes_per_pixel + 1)];
+                    up = context.pixels[(y - 1) * (context.width * bytes_per_pixel + 1) + 1 + x];
                 } else {
                     up = 0;
                 }

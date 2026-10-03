@@ -1,9 +1,8 @@
 #include "idt/idt.h"
 #include "idt/gdt.h"
 #include "idt/isr.h"
-#include "serial/com1.h"
 #include "tty/tty.h"
-#include "com1.h"
+#include "../kernel/serial/com1.h"
 #include "pic/pic8089.h"
 #include "pit/pit.h"
 #include <stdint.h>
