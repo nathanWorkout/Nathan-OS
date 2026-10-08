@@ -41,7 +41,7 @@ ASFLAGS = -f elf64
 BUILD  = build
 KERNEL = kernel
 IMG    = boot.img
-LIMINE = /usr/share/limine
+LIMINE ?= /usr/share/limine
 
 C_SRCS = \
     $(wildcard $(KERNEL)/*.c)                   \
@@ -148,10 +148,13 @@ usb: $(IMG)
 	sync
 	@echo "[OK] Clé USB prête"
 
+OVMF_CODE ?= /usr/share/edk2/x64/OVMF_CODE.4m.fd
+OVMF_VARS ?= OVMF_VARS.fd
+
 run: $(IMG)
 	qemu-system-x86_64 \
-	    -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd \
-	    -drive if=pflash,format=raw,file=OVMF_VARS.fd \
+	    -drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
+	    -drive if=pflash,format=raw,file=$(OVMF_VARS) \
 	    -drive format=raw,file=$(IMG),index=0,media=disk \
 	    -serial stdio \
 	    -m 256M \
