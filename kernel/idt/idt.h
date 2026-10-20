@@ -6,16 +6,16 @@
 typedef struct __attribute__((packed)) {
     uint16_t offset_low;     // bits 0-15
     uint16_t selector;       // segment selector (CS)
-    uint8_t  ist;            // bits 0-2 = IST, le reste à 0
+    uint8_t  ist;            // bits 0-2 = IST. rest at 0
     uint8_t  type_attr;      // type + flags
     uint16_t offset_mid;     // bits 16-31
     uint32_t offset_high;    // bits 32-63
-    uint32_t zero;           // réservé (doit être 0 par intel)
+    uint32_t zero;           // reserved (must be equal to 0 by intel)
 } idt_entry_t;
 
 typedef struct __attribute__((packed)) {
     uint16_t limit;
-    uint64_t base;           
+    uint64_t base;
 } idtr_t;
 
 extern idt_entry_t idt[256];
