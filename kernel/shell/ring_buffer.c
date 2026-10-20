@@ -2,15 +2,14 @@
 #include "ring_buffer.h"
 #include "../tty/tty.h"
 #include "string.h"
-#include "rgba.h"
+#include "../Graphic/core/rgba.h"
 #include "com1.h"
-#include "kernel_panic.h"
+#include "../Graphic/ui/kernel_panic.h"
 #include "VaultFs/vaultfs.h"
 #include "VaultFs/vault_global.h"
-#include "Graphic/ui/default_profile.h"
-#include "Graphic/ui/wallpaper/png.h"
+#include "../Graphic/ui/default_profile.h"
+#include "../Graphic/ui/wallpaper/png.h"
 #include <stddef.h>
-
 
 #define VERSION "0.1"
 #define BUILD_DATE __DATE__

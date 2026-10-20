@@ -133,7 +133,9 @@ $(BUILD)/%.o: $(KERNEL)/proc/%.asm
 $(WALLPAPER_OBJ): $(WALLPAPER)
 	objcopy -O elf64-x86-64 -B i386 -I binary $< $@
 
-img: $(BUILD)/kernel.elf
+img: img-uefi img-bios
+
+img-uefi: $(BUILD)/kernel.elf
 	dd if=/dev/zero of=$(IMG) bs=512 count=524288
 	printf '\x00\x00\x02\x00\xef\xfe\xff\xff\x00\x08\x00\x00\x00\xf8\x07\x00' | dd of=$(IMG) bs=1 seek=446 conv=notrunc
 	printf '\x55\xaa' | dd of=$(IMG) bs=1 seek=510 conv=notrunc
@@ -145,6 +147,35 @@ img: $(BUILD)/kernel.elf
 	mcopy -i $(IMG)@@1M $(BUILD)/kernel.elf ::/boot/kernel.elf
 	mcopy -i $(IMG)@@1M limine.conf ::/boot/limine.conf
 	limine enroll-config $(IMG) $(shell b2sum limine.conf | awk '{print $$1}' | tr -d '\n')
+	@echo "[OK] Image UEFI générée"
+
+img-bios: $(BUILD)/kernel.elf
+	dd if=/dev/zero of=$(IMG) bs=512 count=524288
+	printf '\x00\x00\x02\x00\xef\xfe\xff\xff\x00\x08\x00\x00\x00\xf8\x07\x00' | dd of=$(IMG) bs=1 seek=446 conv=notrunc
+	printf '\x55\xaa' | dd of=$(IMG) bs=1 seek=510 conv=notrunc
+	mformat -i $(IMG)@@1M -F -v VAULTOS ::
+	mmd -i $(IMG)@@1M ::/boot
+	mcopy -i $(IMG)@@1M $(LIMINE)/limine-bios.sys ::/boot/limine-bios.sys
+	mcopy -i $(IMG)@@1M $(BUILD)/kernel.elf ::/boot/kernel.elf
+	mcopy -i $(IMG)@@1M limine.conf ::/boot/limine.conf
+	limine bios-install $(IMG)
+	@echo "[OK] Image BIOS générée"
+
+img-dual: $(BUILD)/kernel.elf
+	dd if=/dev/zero of=$(IMG) bs=512 count=524288
+	printf '\x00\x00\x02\x00\xef\xfe\xff\xff\x00\x08\x00\x00\x00\xf8\x07\x00' | dd of=$(IMG) bs=1 seek=446 conv=notrunc
+	printf '\x55\xaa' | dd of=$(IMG) bs=1 seek=510 conv=notrunc
+	mformat -i $(IMG)@@1M -F -v VAULTOS ::
+	mmd -i $(IMG)@@1M ::/EFI
+	mmd -i $(IMG)@@1M ::/EFI/BOOT
+	mmd -i $(IMG)@@1M ::/boot
+	mcopy -i $(IMG)@@1M $(LIMINE)/BOOTX64.EFI ::/EFI/BOOT/BOOTX64.EFI
+	mcopy -i $(IMG)@@1M $(LIMINE)/limine-bios.sys ::/boot/limine-bios.sys
+	mcopy -i $(IMG)@@1M $(BUILD)/kernel.elf ::/boot/kernel.elf
+	mcopy -i $(IMG)@@1M limine.conf ::/boot/limine.conf
+	limine bios-install $(IMG)
+	limine enroll-config $(IMG) $(shell b2sum limine.conf | awk '{print $$1}' | tr -d '\n')
+	@echo "[OK] Image dual BIOS+UEFI générée"
 
 usb: $(IMG)
 	@echo "[!] Écriture de $(IMG) sur /dev/sda dans 3s... (Ctrl+C pour annuler)"
@@ -156,10 +187,17 @@ usb: $(IMG)
 OVMF_CODE ?= /usr/share/edk2/x64/OVMF_CODE.4m.fd
 OVMF_VARS ?= OVMF_VARS.fd
 
-run: $(IMG)
+run: img-dual
 	qemu-system-x86_64 \
 	    -drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
 	    -drive if=pflash,format=raw,file=$(OVMF_VARS) \
+	    -drive format=raw,file=$(IMG),index=0,media=disk \
+	    -serial stdio \
+	    -m 256M \
+	    -display sdl
+
+run-bios: img-dual
+	qemu-system-x86_64 \
 	    -drive format=raw,file=$(IMG),index=0,media=disk \
 	    -serial stdio \
 	    -m 256M \
@@ -175,6 +213,6 @@ debug: $(IMG)
 clean:
 	rm -f $(BUILD)/*.o $(BUILD)/*.elf $(IMG)
 
-.PHONY: all img run debug clean usb
+.PHONY: all img img-uefi img-bios img-dual run run-bios debug clean usb full
 
 full: clean img run

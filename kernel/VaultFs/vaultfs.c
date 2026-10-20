@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "memory/pmm.h"
+#include "../memory/pmm.h"
 #include "vaultfs.h"
 #include "string.h"
 #include "com1.h"
