@@ -30,10 +30,13 @@ CFLAGS = \
     -I kernel/lib         \
     -I kernel/proc        \
     -I kernel/Graphic     \
-	-I kernel/Graphic/gui \
+    -I kernel/Graphic/core \
+    -I kernel/Graphic/renderer \
+    -I kernel/Graphic/ui  \
+    -I kernel/Graphic/ui/wallpaper \
     -I kernel/VaultFs/
 
-WALLPAPER = kernel/Graphic/gui/wallpaper_loader/wallpaper.png
+WALLPAPER     = kernel/Graphic/ui/wallpaper/wallpaper.png
 WALLPAPER_OBJ = $(BUILD)/wallpaper.o
 
 ASFLAGS = -f elf64
@@ -44,23 +47,25 @@ IMG    = boot.img
 LIMINE ?= /usr/share/limine
 
 C_SRCS = \
-    $(wildcard $(KERNEL)/*.c)                   \
-    $(wildcard $(KERNEL)/idt/*.c)               \
-    $(wildcard $(KERNEL)/tty/*.c)               \
-    $(wildcard $(KERNEL)/serial/*.c)            \
-    $(wildcard $(KERNEL)/lib/*.c)               \
-    $(wildcard $(KERNEL)/pic/*.c)               \
-    $(wildcard $(KERNEL)/pit/*.c)               \
-    $(wildcard $(KERNEL)/memory/*.c)            \
-    $(wildcard $(KERNEL)/drivers/*.c)           \
-    $(wildcard $(KERNEL)/drivers/keyboard/*.c)  \
-	$(wildcard $(KERNEL)/drivers/mouse/*.c)  \
-    $(wildcard $(KERNEL)/shell/*.c)             \
-    $(wildcard $(KERNEL)/proc/*.c)              \
-    $(wildcard $(KERNEL)/Graphic/*.c)           \
-	$(wildcard $(KERNEL)/Graphic/gui/*.c)       \
-	$(wildcard $(KERNEL)/VaultFs/*.c)          \
-	$(wildcard $(KERNEL)/Graphic/gui/wallpaper_loader/*.c)
+    $(wildcard $(KERNEL)/*.c)                           \
+    $(wildcard $(KERNEL)/idt/*.c)                       \
+    $(wildcard $(KERNEL)/tty/*.c)                       \
+    $(wildcard $(KERNEL)/serial/*.c)                    \
+    $(wildcard $(KERNEL)/lib/*.c)                       \
+    $(wildcard $(KERNEL)/pic/*.c)                       \
+    $(wildcard $(KERNEL)/pit/*.c)                       \
+    $(wildcard $(KERNEL)/memory/*.c)                    \
+    $(wildcard $(KERNEL)/drivers/*.c)                   \
+    $(wildcard $(KERNEL)/drivers/keyboard/*.c)          \
+    $(wildcard $(KERNEL)/drivers/mouse/*.c)             \
+    $(wildcard $(KERNEL)/shell/*.c)                     \
+    $(wildcard $(KERNEL)/proc/*.c)                      \
+    $(wildcard $(KERNEL)/Graphic/*.c)                   \
+    $(wildcard $(KERNEL)/Graphic/core/*.c)              \
+    $(wildcard $(KERNEL)/Graphic/renderer/*.c)          \
+    $(wildcard $(KERNEL)/Graphic/ui/*.c)                \
+    $(wildcard $(KERNEL)/Graphic/ui/wallpaper/*.c)      \
+    $(wildcard $(KERNEL)/VaultFs/*.c)
 
 ASM_SRCS = \
     $(filter-out $(KERNEL)/entry.asm, $(wildcard $(KERNEL)/*.asm)) \
@@ -75,8 +80,6 @@ all: $(BUILD)/kernel.elf
 $(BUILD)/kernel.elf: $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS) $(WALLPAPER_OBJ) linker.ld
 	$(LD) $(LDFLAGS) -o $@ $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS) $(WALLPAPER_OBJ)
 	@echo "[OK] kernel.elf généré"
-
-
 
 $(BUILD)/entry.o: $(KERNEL)/entry.asm
 	$(AS) $(ASFLAGS) $< -o $@
@@ -109,11 +112,15 @@ $(BUILD)/%.o: $(KERNEL)/proc/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/%.o: $(KERNEL)/Graphic/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
-$(BUILD)/%.o: $(KERNEL)/Graphic/gui/%.c
+$(BUILD)/%.o: $(KERNEL)/Graphic/core/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD)/%.o: $(KERNEL)/Graphic/renderer/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD)/%.o: $(KERNEL)/Graphic/ui/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD)/%.o: $(KERNEL)/Graphic/ui/wallpaper/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/%.o: $(KERNEL)/VaultFs/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
-$(BUILD)/%.o: $(KERNEL)/Graphic/gui/wallpaper_loader/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/%.o: $(KERNEL)/%.asm
@@ -122,8 +129,6 @@ $(BUILD)/%.o: $(KERNEL)/idt/%.asm
 	$(AS) $(ASFLAGS) $< -o $@
 $(BUILD)/%.o: $(KERNEL)/proc/%.asm
 	$(AS) $(ASFLAGS) $< -o $@
-$(BUILD)/kernel.elf: $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS) $(WALLPAPER_OBJ) linker.ld
-	$(LD) $(LDFLAGS) -o $@ $(BUILD)/entry.o $(ASM_OBJS) $(C_OBJS) $(WALLPAPER_OBJ)
 
 $(WALLPAPER_OBJ): $(WALLPAPER)
 	objcopy -O elf64-x86-64 -B i386 -I binary $< $@
@@ -140,7 +145,7 @@ img: $(BUILD)/kernel.elf
 	mcopy -i $(IMG)@@1M $(BUILD)/kernel.elf ::/boot/kernel.elf
 	mcopy -i $(IMG)@@1M limine.conf ::/boot/limine.conf
 	limine enroll-config $(IMG) $(shell b2sum limine.conf | awk '{print $$1}' | tr -d '\n')
-	
+
 usb: $(IMG)
 	@echo "[!] Écriture de $(IMG) sur /dev/sda dans 3s... (Ctrl+C pour annuler)"
 	@sleep 3
@@ -170,7 +175,6 @@ debug: $(IMG)
 clean:
 	rm -f $(BUILD)/*.o $(BUILD)/*.elf $(IMG)
 
-.PHONY: all img run debug clean
+.PHONY: all img run debug clean usb
 
 full: clean img run
-	$(MAKE) -j$(nproc) all

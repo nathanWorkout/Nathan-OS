@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
-#include "../lib/string.h"
-#include "../memory/kmalloc.h"
+#include "lib/string.h"
+#include "memory/kmalloc.h"
 #include "png.h"
 #include "tty.h"
 #include "com1.h"

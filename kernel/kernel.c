@@ -13,9 +13,9 @@
 #include "ring_buffer.h"
 #include "proc/tss.h"
 #include "Graphic/gfx.h"
-#include "Graphic/2d_renderer.h"
-#include "Graphic/framebuffer.h"
-#include "Graphic/ssaa.h"
+#include "Graphic/renderer/2d_renderer.h"
+#include "Graphic/core/framebuffer.h"
+#include "Graphic/renderer/ssaa.h"
 #include "sqrt.h"
 #include "sdf.h"
 #include "rgba.h"
@@ -23,7 +23,7 @@
 #include "kernel_panic.h"
 #include "VaultFs/vault_global.h"
 #include "limine_request.h"
-#include "../kernel/Graphic/gui/wallpaper_loader/png.h"
+#include "Graphic/ui/wallpaper/png.h"
 #include "../kernel/drivers/mouse/mouse.h"
 #include <stddef.h>
 

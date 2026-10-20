@@ -16,7 +16,7 @@
 #define GUI_COLS (1280 / CHAR_W)
 #define GUI_ROWS (1280 / CHAR_H)
 
-#include "wallpaper_loader/png.h"
+#include "wallpaper/png.h"
 
 void default_profile_init(Canvas cv, PngContext wallpaper) {
     tty_clear();

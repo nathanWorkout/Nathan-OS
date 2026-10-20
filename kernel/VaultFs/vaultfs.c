@@ -3,19 +3,12 @@
 #include "vaultfs.h"
 #include "string.h"
 #include "com1.h"
-#include "../kernel/Graphic/gui/wallpaper_loader/png.h"
 
 void vaultfs_init(VaultFs *fs) {
-    serial_print("avant memset");
     memset(fs, 0, sizeof(VaultFs));
     fs->next_inode = 1;
 
     uint64_t phys = pmm_alloc_page();
-    serial_print("[VAULTFS] phys = ");
-    serial_print_hex(phys);
-    serial_print(" virt = ");
-    serial_print_hex(phys_to_virt(phys));
-    serial_print("\n");
     VaultNode *root = (VaultNode *)phys_to_virt(phys);
     memset(root, 0, sizeof(VaultNode));
 
@@ -65,11 +58,11 @@ VaultNode *vaultfs_resolve(VaultFs *fs, uint64_t profile_id, const char *path) {
 }
 
 uint8_t *vaultfs_read(VaultFs *fs, uint64_t profile_id, const char *path, uint64_t *size_out) {
-    VaultNode *node = vaultfs_resolve(fs, profile_id, path);
+    VaultNode *node = vaultfs_resolve_path(fs, profile_id, path);
     if (node == NULL) return NULL;
     if (node->data == NULL) return NULL;
     *size_out = node->size;
-    return node->data; 
+    return node->data;
 
 }
 
@@ -101,23 +94,23 @@ VaultNode *vaultfs_create(VaultFs *fs, uint64_t profile_id, const char *name, ui
 }
 
 int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *data, uint64_t size) {
-    VaultNode *target_node = vaultfs_resolve(fs, profile_id, path);
+    VaultNode *target_node = vaultfs_resolve_path(fs, profile_id, path);
 
     int in_c0 = 0, in_c1 = 0;
     if (target_node != NULL) {
         VaultNode *n = fs->layer0.head;
         while (n) {
-            if (n == target_node) { 
-                in_c0 = 1; 
-                break; 
+            if (n == target_node) {
+                in_c0 = 1;
+                break;
             }
             n = n->next;
         }
         n = fs->layer1.head;
         while (n) {
-            if (n == target_node) { 
-                in_c1 = 1; 
-                break; 
+            if (n == target_node) {
+                in_c1 = 1;
+                break;
             }
             n = n->next;
         }
@@ -146,7 +139,7 @@ int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *d
     // si size = 5000
     // (5000 + 4095) / 4096
     // = 9095 / 4096
-     // = 2 avec juste size / PAGE_SIZE c'est pasw assez
+     // = 2 avec juste size / PAGE_SIZE c'est pas assez
     if (pages_needed == 0) pages_needed = 1;
 
     uint64_t phys = pmm_alloc_pages_contig(pages_needed);
@@ -164,7 +157,7 @@ int vaultfs_write(VaultFs *fs, uint64_t profile_id, const char *path, uint8_t *d
 }
 
 int vaultfs_mkdir(VaultFs *fs, uint64_t profile_id, const char *path) {
-    VaultNode *existing = vaultfs_resolve(fs, profile_id, path);
+    VaultNode *existing = vaultfs_resolve_path(fs, profile_id, path);
     if (existing != NULL) return -1;
 
     uint64_t cwd = 0;
@@ -193,7 +186,7 @@ int vaultfs_delete(VaultFs *fs, uint64_t profile_id, const char *path) {
                     prev->next = curr->next;
                 } else {
                     fs->profiles[i].layer2.head = curr->next;
-                }     
+                }
                 pmm_free_page(virt_to_phys((uint64_t)curr));
                 fs->profiles[i].layer2.count--;
                 return 0;
@@ -213,7 +206,7 @@ int vaultfs_delete(VaultFs *fs, uint64_t profile_id, const char *path) {
                 prev->next = curr->next;
             } else {
                 fs->layer1.head = curr->next;
-            }     
+            }
             pmm_free_page(virt_to_phys((uint64_t)curr));
             fs->layer1.count--;
             return 0;
@@ -246,7 +239,7 @@ int vaultfs_publish(VaultFs *fs, uint64_t profile_id, const char *path) {
                 }
                 else {
                     fs->profiles[i].layer2.head = curr->next;
-                }    
+                }
                 fs->profiles[i].layer2.count--;
 
                 curr->owner_profile_id = profile_id;
@@ -384,8 +377,8 @@ VaultNode *vaultfs_resolve_path(VaultFs *fs, uint64_t profile_id, const char *pa
     uint64_t current_inode = 0;
 
     if (path[0] == '/') {
-        current_inode = 0; 
-        path++;            
+        current_inode = 0;
+        path++;
     } else {
         for (uint8_t i = 0; i < fs->profile_count; i++) {
             if (fs->profiles[i].profile_id == profile_id) {
@@ -457,7 +450,7 @@ int vaultfs_cd(VaultFs *fs, uint64_t profile_id, const char *path) {
     VaultNode *node = vaultfs_resolve_path(fs, profile_id, path);
     if (node == NULL) return -1;
     if (node->type != VAULT_DIR) return -1;
-    
+
     for (uint8_t i = 0; i < fs->profile_count; i++) {
         if (fs->profiles[i].profile_id != profile_id) continue;
         fs->profiles[i].cwd_inode = node->inode_id;

@@ -2,7 +2,7 @@
 #define PAGING_H
 
 #include <stdint.h>
-#include "Graphic/framebuffer.h"
+#include "Graphic/core/framebuffer.h"
 #include "../limine_request.h"
 
 #define PAGE_SIZE          4096

@@ -7,8 +7,8 @@
 #include "kernel_panic.h"
 #include "VaultFs/vaultfs.h"
 #include "VaultFs/vault_global.h"
-#include "../Graphic/gui/default_profile.h"
-#include "../kernel/Graphic/gui/wallpaper_loader/png.h"
+#include "Graphic/ui/default_profile.h"
+#include "Graphic/ui/wallpaper/png.h"
 #include <stddef.h>
 
 
@@ -27,13 +27,13 @@ static uint64_t current_profile_id = 1;
 static char current_path[256] = "/";
 
 extern volatile uint64_t pit_ticks;
-static ring_buffer_t rb;
+static ring_buffer_t rb; // Ring buffer for keyboard input
 
-extern uint8_t _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_start[];
-extern uint8_t _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_end[];
+extern uint8_t _binary_kernel_Graphic_ui_wallpaper_wallpaper_png_start[];
+extern uint8_t _binary_kernel_Graphic_ui_wallpaper_wallpaper_png_end[];
 
 
-
+// Push a character into the input ring buffer, called from IRQ1 handler
 void input_push(char c) {
     if ((rb.head + 1) % 256 == rb.tail)
         return;
@@ -53,6 +53,7 @@ int input_has_data() {
     return rb.tail != rb.head;
 }
 
+// Block until a key is pressed, blink cursor every 500ms while waiting
 char get_key() {
     uint64_t last = pit_ticks;
     int visible = 1;
@@ -69,6 +70,7 @@ char get_key() {
     return input_pop();
 }
 
+// Read a line from keyboard input into buffer, handle backspace
 void readline(char *buffer, int max) {
     int i = 0;
     while (i < max - 1) {
@@ -125,15 +127,16 @@ void print_motd() {
     putchar('\n');
 }
 
+// Main shell loop
 void shell_run(Canvas *cv) {
 
     vaultfs_create_profile(&g_vaultfs, 1, "default");
 
-    uint64_t png_size = _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_end
-        - _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_start;
+    uint64_t png_size = _binary_kernel_Graphic_ui_wallpaper_wallpaper_png_end
+        - _binary_kernel_Graphic_ui_wallpaper_wallpaper_png_start;
 
     vaultfs_write(&g_vaultfs, 1, "wallpaper.png",
-        _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_start,
+        _binary_kernel_Graphic_ui_wallpaper_wallpaper_png_start,
         png_size);
 
     char buf[256];
@@ -209,6 +212,11 @@ void shell_run(Canvas *cv) {
             }
         }
 
+        /*
+         * Ls walks all 3 layers from top to bottom (layer2 -> layer1 -> layer0).
+         * A file in a higher layer hides files with the same name in lower layers.
+         * layer2 = profile private, layer1 = shared, layer0 = system (read-only)
+         * */
         else if (strcmp(buf, "ls") == 0) {
             tty_set_color(COL_OUTPUT);
 

@@ -2,7 +2,7 @@
 #define RING_BUFFER_H
 
 #include <stdint.h>
-#include "../Graphic/gfx.h"
+#include "Graphic/gfx.h"
 
 #define RING_BUFFER_SIZE 256
 

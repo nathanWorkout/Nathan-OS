@@ -1,16 +1,13 @@
 #include <stdint.h>
 #include <stdarg.h>
-#include "../serial/com1.h"
-#include "../Graphic/gfx.h"
-#include "../Graphic/framebuffer.h"
-#include "../Graphic/font.h"
-#include "../Graphic/rgba.h"
-#include "../Graphic/2d_renderer.h"
+#include "Graphic/gfx.h"
+#include "Graphic/core/font.h"
+#include "Graphic/renderer/2d_renderer.h"
 #include "../io/io.h"
 
 #define SCALE 1
-#define CHAR_W (8 * SCALE)
-#define CHAR_H (16 * SCALE)
+#define CHAR_W (8 * SCALE) // character width in pixels
+#define CHAR_H (16 * SCALE) // character height in pixels
 
 static Canvas cv;
 static int cursor_x = 0;
@@ -29,10 +26,11 @@ void tty_init(Canvas c) {
     cursor_x = 0;
     cursor_y = 0;
     outb(0x3d4, 0x0a);
-    outb(0x3d5, 0x20);
+    outb(0x3d5, 0x20); // disable hardware VGA cursor
     color_screen(&cv, 0x00000000);
 }
 
+// Print a character, handle special chars (\n \r \t \b) and scroll when reaching bottom
 void putchar(char c) {
     switch(c) {
         case '\n': cursor_y++; cursor_x = 0; break;
@@ -55,7 +53,7 @@ void putchar(char c) {
         cursor_y++;
     }
 
-    if (cursor_y >= TTY_ROWS) {
+    if (cursor_y >= TTY_ROWS) { // scroll
         for (int y = 1; y < TTY_ROWS; y++) {
             for (int x = 0; x < TTY_COLS; x++) {
                 for (int py = 0; py < CHAR_H; py++) {
@@ -72,6 +70,7 @@ void putchar(char c) {
     }
 }
 
+// Print a string followed by a newline
 void puts(const char *s) {
     while (*s != '\0') {
         putchar(*s);
@@ -80,6 +79,7 @@ void puts(const char *s) {
     putchar('\n');
 }
 
+// support %c, %s, %d, %x
 int printk(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -132,6 +132,7 @@ int printk(const char *fmt, ...) {
     return count;
 }
 
+
 void tty_set_color(uint32_t c) {
     color = c;
 }
@@ -142,6 +143,8 @@ void tty_clear(void) {
     cursor_y = 0;
 }
 
+
+// work only in vm
 void tty_reboot(void) {
     uint8_t val = inb(0x64);
     while (val & 0x02) val = inb(0x64);

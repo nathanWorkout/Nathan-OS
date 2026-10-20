@@ -3,7 +3,7 @@
 #include "string.h"
 #include "pmm.h"
 #include "com1.h"
-#include "Graphic/framebuffer.h"
+#include "Graphic/core/framebuffer.h"
 #include "../limine_request.h"
 
 extern char _text_start,   _text_end;
