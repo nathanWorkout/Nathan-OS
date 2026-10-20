@@ -83,6 +83,8 @@
  * the more i is increased, the more the number of turns increases, the more n can make sqrt greater
  */
 
+
+// WHEN YOU USE THIS FUNCTION REMEMBER TO DIVIDE BY 1000 IF YOU DON'T WANT DECIMALS
 int64_t sqrt(int64_t x) {
     if (x <= 0) return 0;
     int64_t n = x * 1000000LL;

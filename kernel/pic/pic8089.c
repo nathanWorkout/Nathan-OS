@@ -4,32 +4,32 @@
 
 
 void pic_init() {
-    // | pour combiner 2 flags
-    outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4); // Initialisation maitre (master)
-    outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);    // Initilaisation esclave (slave)
-    outb(0xA0, 0x00); // Delai pour que le cpu puisse traiter
+    // | to combine two flags
+    outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);    // initialize master PIC
+    outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);    // initialize slave PIC
+    outb(0xA0, 0x00); // delay so the CPU can process
 
-    // Remapping
+    // Remapping IRQs
     outb(PIC1_DATA, PIC1_OFFSET);
     outb(PIC2_DATA, PIC2_OFFSET);
     outb(0x80, 0x00);
 
-    // Cascade
+    // Cascade mode
     outb(PIC1_DATA, ICW3_1);
     outb(PIC2_DATA, ICW3_2);
     outb(0x80, 0x00);
 
-    // Mode 8086
+    // 8086 mode
     outb(PIC1_DATA, ICW4_8086);
     outb(PIC2_DATA, ICW4_8086);
     outb(0x80, 0x00);
 
-    // Masquer les irq
-    outb(PIC1_DATA, IRQ); 
+    // mask all IRQs
+    outb(PIC1_DATA, IRQ);
     outb(PIC2_DATA, IRQ);
 }
 
-// Une fois qu'une interruptio a eu lieu il peut en traiter d'autres
+// Send End Of Interrupt signal to the PIC so it can handle the next interrupt
 void pic_send_eoi(uint8_t irq) {
     if(irq >= 8) {
 	outb(PIC2_COMMAND, PIC_EOI); // Slave
@@ -44,7 +44,7 @@ void pic_set_mask(uint8_t irq) {
 
     if(irq < 8) {
 	uint8_t noActive = inb(PIC1_DATA);
-	value = noActive | (1 << irq); // Pour mettre a 1 -> irq ignoré
+	value = noActive | (1 << irq); // Set bit to 1 -> irq ignored
 	outb(PIC1_DATA, value);
     } else if(irq >= 8) {
         uint8_t active = inb(PIC2_DATA);
@@ -58,9 +58,9 @@ void pic_clear_mask(uint8_t irq) {
 
     if(irq < 8) {
 	uint8_t noActive = inb(PIC1_DATA);
-	value = noActive & ~(1 << irq); // Mettre a 0 -> irq active
+	value = noActive & ~(1 << irq); // Set bit to 0 -> irq active
 	outb(PIC1_DATA, value);
-    } else if (irq >= 8) {
+    } else {
 	uint8_t active = inb(PIC2_DATA);
 	value = active & ~(1 << (irq - 8));
 	outb(PIC2_DATA, value);

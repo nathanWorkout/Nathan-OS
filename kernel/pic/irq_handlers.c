@@ -1,6 +1,4 @@
 #include <stdint.h>
-#include "com1.h"
-#include "keyboard.h"
 #include "mouse/mouse.h"
 
 volatile uint64_t pit_ticks = 0;
@@ -11,4 +9,4 @@ void irq0_handler() {
 
 void irq12_handler(void) {
     mouse_irq_handler();
-}   
+}

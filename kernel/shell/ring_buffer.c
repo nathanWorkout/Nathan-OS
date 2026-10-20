@@ -5,11 +5,7 @@
 #include "rgba.h"
 #include "com1.h"
 #include "kernel_panic.h"
-#include "framebuffer.h"
-#include "2d_renderer.h"
 #include "VaultFs/vaultfs.h"
-#include "memory/paging.h"
-#include "memory/pmm.h"
 #include "VaultFs/vault_global.h"
 #include "../Graphic/gui/default_profile.h"
 #include "../kernel/Graphic/gui/wallpaper_loader/png.h"
@@ -24,7 +20,7 @@
 #define COL_PROMPT2  rgba( 99,  99, 102, 255)
 #define COL_INPUT    rgba(229, 229, 234, 255)
 #define COL_OUTPUT   rgba(142, 142, 147, 255)
-#define COL_SAY      rgba(255, 214,  10, 255) 
+#define COL_SAY      rgba(255, 214,  10, 255)
 #define COL_ERROR    rgba(255,  69,  58, 255)
 
 static uint64_t current_profile_id = 1;
@@ -95,7 +91,7 @@ void readline(char *buffer, int max) {
     buffer[i] = '\0';
 }
 
-// ==================== Personnalisation =======================
+// ==================== Rice =======================
 
 int strlen(const char *s);
 
@@ -133,7 +129,7 @@ void shell_run(Canvas *cv) {
 
     vaultfs_create_profile(&g_vaultfs, 1, "default");
 
-    uint64_t png_size = _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_end 
+    uint64_t png_size = _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_end
         - _binary_kernel_Graphic_gui_wallpaper_loader_wallpaper_png_start;
 
     vaultfs_write(&g_vaultfs, 1, "wallpaper.png",
