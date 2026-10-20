@@ -80,6 +80,7 @@
  *         = 2000 y_next >=y -> break
  *
  * y = 2000 for n = 4 000 000
+ * the more i is increased, the more the number of turns increases, the more n can make sqrt greater
  */
 
 int64_t sqrt(int64_t x) {
