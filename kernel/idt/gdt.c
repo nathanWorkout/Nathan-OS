@@ -50,8 +50,8 @@ void gdt_init(void) {
     gdt_set_entry(0, 0, 0, 0, 0); // null descriptor
     gdt_set_entry(1, 0x00000000, 0x000FFFFF, 0x9A, 0xA0); // code kernel ring 0
     gdt_set_entry(2, 0x00000000, 0x000FFFFF, 0x92, 0x80); // data kernel ring 0
-    gdt_set_entry(3, 0x00000000, 0x000FFFFF, 0xFA, 0xA0); // user code ring 3
     gdt_set_entry(4, 0x00000000, 0x000FFFFF, 0xF2, 0x80); // user data ring 3
+    gdt_set_entry(3, 0x00000000, 0x000FFFFF, 0xFA, 0xA0); // user code ring 3
     gdt_set_entry(5, 0, 0, 0x89, 0); // TSS low
     gdt_set_entry(6, 0, 0, 0, 0);    // TSS high
 

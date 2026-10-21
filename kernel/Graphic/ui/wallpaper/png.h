@@ -32,7 +32,7 @@ typedef struct {
     uint8_t  *data;
     uint32_t  size;
     uint32_t  pos;
-    uint32_t  bits;
+    uint64_t  bits;
     uint32_t  bit_count;
 } BitReader;
 
